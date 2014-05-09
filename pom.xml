@@ -25,6 +25,11 @@
     </developer>
   </developers>
   <dependencies>
+      <dependency>
+	<groupId>org.apache.commons</groupId>
+	<artifactId>commons-exec</artifactId>
+	<version>1.2</version>
+     </dependency>
      <dependency>
 	<groupId>com.jhlabs</groupId>
 	<artifactId>javaproj</artifactId>

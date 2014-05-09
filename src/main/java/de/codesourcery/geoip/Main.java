@@ -30,14 +30,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +46,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+import org.apache.commons.lang.StringUtils;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
@@ -87,7 +87,7 @@ public class Main {
 
 		canvas.setScale( SCALE_X , SCALE_Y );
 		canvas.setPreferredSize( new Dimension(640,480 ) );
-		canvas.addCoordinates( PARIS , ZERO , NEW_YORK , DUBLIN , MELBOURNE , WELLINGTON );
+		// canvas.addCoordinates( PARIS , ZERO , NEW_YORK , DUBLIN , MELBOURNE , WELLINGTON );
 		
 		JPanel panel = new JPanel();
 		panel.setLayout( new FlowLayout() );
@@ -115,7 +115,7 @@ public class Main {
 		panel.add( new JLabel("Scale-Y"));
 		panel.add( scaleY );
 		
-		final JTextField ipAddress = new JTextField( "213.191.64.208" );
+		final JTextField ipAddress = new JTextField( "www.slashdot.org" );
 		ipAddress.setColumns( 20 );
 		
 		final ActionListener ipListener = new ActionListener() {
@@ -123,35 +123,61 @@ public class Main {
 			@Override
 			public void actionPerformed(ActionEvent e) 
 			{
-				String ip = ipAddress.getText(); 
-				if ( ip != null && ip.trim().length() > 0 ) 
+				final String destinationIP = ipAddress.getText(); 
+				if ( StringUtils.isNotBlank( destinationIP ) ) 
 				{
-					ip = ip.trim();
-					boolean isValid = false;
+					final List<String> ips;
 					try {
-						isValid = Inet4Address.getByName( ip ) != null;
-					} catch(Exception ex) {
+						if ( TracePath.isPathTracingAvailable() ) {
+							ips = TracePath.trace( destinationIP );
+						} else {
+							System.err.println("tracepath not available.");
+							if ( TracePath.isValidIP( destinationIP ) ) {
+								ips = new ArrayList<>();
+								ips.add( destinationIP );
+							} else {
+								System.err.println( destinationIP+" is no valid IP");
+								return;
+							}
+						}
+					} 
+					catch(Exception ex) {
+						System.err.println("Failed to trace "+destinationIP);
+						ex.printStackTrace();
+						return;
 					}
-					if ( ! isValid ) {
-						try {
-							isValid = Inet6Address.getByName( ip ) != null;
-						} catch(Exception ex) {
-						}						
-					}
-					if ( isValid ) 
+
+					final List<Coordinate> hops = new ArrayList<>();					
+					for (Iterator<String> it = ips.iterator(); it.hasNext();) 
 					{
+						String hop = it.next();
 						try 
 						{
-							Coordinate result = resolve( ip );
-							if ( result != null ) {
-								canvas.removeAllCoordinates();
-								canvas.addCoordinate( result );
-								canvas.repaint();
+							System.out.println("Retrieving geo-location for "+hop);
+							
+							Coordinate result = resolve( hop );
+							if ( result != null && ! ( result.text != null && result.text.toLowerCase().contains("reserved")) ) 
+							{
+								hops.add( result );
 							}
+							
 						} catch (IOException e1) {
-							System.err.println("Failed to resolve IP "+ip);
+							System.err.println("Failed to resolve IP "+hop);
 							e1.printStackTrace();
 						}
+						if ( it.hasNext() ) {
+							// be nice and wait some time
+							try {
+								Thread.sleep(300);
+							} catch(Exception ex2) {}							
+						}
+					}
+					System.out.println("Traced "+destinationIP+" for "+hops.size()+" hops");
+					if ( ! hops.isEmpty() ) 
+					{
+						canvas.removeAllCoordinates();
+						canvas.addCoordinates( hops.toArray( new Coordinate[ hops.size() ] ) );
+						canvas.repaint();						
 					}
 				}
 			}
@@ -397,17 +423,27 @@ public class Main {
 				g.drawLine( mouseX , 0 , mouseX , getHeight() );
 			}
 			
+			Point previous = null;
 			for ( Coordinate coordinate : this.coordinates ) 
 			{
 				final Point point = unproject(coordinate);
-				
 				coordinate.currentPoint.setLocation( point );
 				
-				final int radius = 3;
-				
-				g.setColor(coordinate.color);
-				g.fillArc( point.x - radius , point.y-radius , radius*2 , radius*2 , 0 , 360 );
+				renderPoint( point , coordinate , g );
+				if ( previous != null ) 
+				{
+					g.drawLine( previous.x , previous.y , point.x ,point .y ); 
+				}
+				previous = point;
 			}
+		}
+		
+		protected void renderPoint(Point point,Coordinate coordinate,Graphics g) 
+		{
+			final int radius = 3;
+			
+			g.setColor(coordinate.color);
+			g.fillArc( point.x - radius , point.y-radius , radius*2 , radius*2 , 0 , 360 );			
 		}
 		
 		protected Point unproject(Coordinate c) 
