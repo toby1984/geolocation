@@ -19,6 +19,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -198,13 +199,18 @@ public class Main {
 				/*
 				 * Weed-out invalid/unknown locations.
 				 */
-				for (Iterator<GeoLocation<StringSubject>> it = locations.iterator(); it.hasNext();) 
 				{
-					final GeoLocation<StringSubject> location = it.next();
-					if ( ! location.hasValidCoordinates() ) 
+					GeoLocation<StringSubject> previous = null;
+					for (Iterator<GeoLocation<StringSubject>> it = locations.iterator(); it.hasNext();) 
 					{
-						it.remove();
-						System.err.println("Ignoring invalid location for "+location);
+						final GeoLocation<StringSubject> location = it.next();
+						if ( ! location.hasValidCoordinates() || ( previous != null && previous.coordinate().equals( location.coordinate() ) ) ) 
+						{
+							it.remove();
+							System.err.println("Ignoring invalid/duplicate location for "+location);
+						} else {
+							previous = location;
+						}
 					}
 				}
 				
@@ -219,17 +225,22 @@ public class Main {
 
 				if ( locations.size() == 1 ) 
 				{
-					canvas.addCoordinate( PointRenderer.createPoint( locations.get(0) , Color.RED ) );
+					canvas.addCoordinate( PointRenderer.createPoint( locations.get(0) , getLabel( locations.get(0) ) , Color.BLACK ) );
 				} 
 				else if ( locations.size() > 1 ) 
 				{
 					GeoLocation<StringSubject> previous = locations.get(0);
+					MapPoint previousPoint = PointRenderer.createPoint( previous , getLabel( previous ) , Color.BLACK );
 					final int len = locations.size();
 					for ( int i = 1 ; i < len ; i++ ) 
 					{
 						final GeoLocation<StringSubject> current = locations.get(i);
-						canvas.addCoordinate( LineRenderer.createLine( previous , current , Color.RED ) );
+						final MapPoint currentPoint = PointRenderer.createPoint( current , getLabel( current ) , Color.BLACK );
+						
+						canvas.addCoordinate( LineRenderer.createLine( previousPoint , currentPoint , Color.RED ) );
+						
 						previous = locations.get(i);
+						previousPoint = currentPoint;
 					}
 				}
 				System.out.println("Finished adding");
@@ -260,6 +271,23 @@ public class Main {
 		catch(Exception e) {
 		}
 	}
+	
+	protected static String getLabel(GeoLocation<?> location) 
+	{
+		String city = location.parameter(GeoLocation.KEY_CITY, "" ).toString();
+		String country = location.parameter(GeoLocation.KEY_COUNTRY, "" ).toString();
+		
+		String result = location.subject().toString();
+		if ( StringUtils.isNotBlank( city ) ) {
+			result += ","+city;
+			if ( StringUtils.isNotBlank( country ) ) {
+				result += ","+country;
+			}
+		} else if ( StringUtils.isNotBlank( country ) ) {
+			result += ","+country;
+		}
+		return result;
+	}	
 
 	protected static final class MapCanvas extends JPanel {
 
@@ -294,15 +322,12 @@ public class Main {
 				{
 				case POINT:
 					final MapPoint point = (MapPoint) element;
-					final GeoLocation<?> location = point.location;
-					return location.subject().toString()+
-							",city="+point.location.parameter(GeoLocation.KEY_CITY, "" )+								
-							",country="+point.location.parameter(GeoLocation.KEY_COUNTRY, "" );
+					return getLabel( point.location );
 				}
 			}
 			return null;
 		}
-
+		
 		public void removeAllCoordinates() {
 			mapRenderer.removeAllCoordinates();
 		}
@@ -363,11 +388,18 @@ public class Main {
 			return this.mapRenderer.removeCoordinate( c );
 		}
 
+		private Font font;
+		
 		@Override
 		protected void paintComponent(Graphics g) 
 		{
 			super.paintComponent(g);
 
+			if ( font == null ) {
+				font = new Font("serif", Font.BOLD , 12 );
+				
+			}
+			g.setFont( font );
 			mapRenderer.renderMap( g ,  getWidth() ,  getHeight() );
 
 			final double width = getWidth();

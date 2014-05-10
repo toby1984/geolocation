@@ -26,22 +26,30 @@ import de.codesourcery.geoip.GeoLocation;
  *  
  * @author tobias.gierke@code-sourcery.de
  */
-public final class PointRenderer implements IMapElementRenderer {
+public class PointRenderer implements IMapElementRenderer {
 
 	private final Graphics g;
 	private final IImageProjection imageProject;
 	
-	public static final class MapPoint implements IMapElement 
+	public static class MapPoint implements IMapElement 
 	{
 		public final GeoLocation<?> location;
 		public final Point point = new Point();
+		public final String label;
 		public boolean isValid = false;
 		public final Color color;
 		
 		public MapPoint(GeoLocation<?> location,Color color) {
 			this.location = location;
 			this.color = color;
+			this.label = null;
 		}
+		
+		public MapPoint(GeoLocation<?> location,String label, Color color) {
+			this.location = location;
+			this.color = color;
+			this.label = label;
+		}		
 		
 		@Override
 		public double distanceSquared(int x, int y) 
@@ -84,6 +92,10 @@ public final class PointRenderer implements IMapElementRenderer {
 	public static MapPoint createPoint(GeoLocation<?> location,Color color) {
 		return new MapPoint(location,color);
 	}
+	
+	public static MapPoint createPoint(GeoLocation<?> location,String label,Color color) {
+		return new MapPoint(location,label,color);
+	}	
 
 	public PointRenderer(IImageProjection imageProject, Graphics g) {
 		this.imageProject = imageProject;
@@ -102,5 +114,9 @@ public final class PointRenderer implements IMapElementRenderer {
 		
 		g.setColor( point.color );
 		g.fillArc( point.point.x - radius , point.point.y - radius , radius*2 , radius*2 , 0 , 360 );			
+		
+		if ( point.label != null ) {
+			g.drawString( point.label ,  point.point.x + radius + 1,  point.point.y - radius - 1 );
+		}
 	}	
 }

@@ -102,6 +102,13 @@ public final class LineRenderer implements IMapElementRenderer {
 							 PointRenderer.createPoint( end , color) ,
 							 color);
 	}
+	
+	public static MapLine createLine(MapPoint start,MapPoint end , Color color) 
+	{
+		return new MapLine( start ,
+							 end ,
+							 color);
+	}	
 
 	public LineRenderer(IImageProjection imageProject, Graphics g) {
 		this.imageProject = imageProject;
@@ -117,10 +124,10 @@ public final class LineRenderer implements IMapElementRenderer {
 			line.calculateCoordinates( imageProject );
 		}
 		
-		pointRenderer.render( line.start );
-		pointRenderer.render( line.end );
-		
 		g.setColor( line.color );
 		g.drawLine( line.start.point.x , line.start.point.y , line.end.point.x , line.end.point.y );
+		
+		pointRenderer.render( line.start );
+		pointRenderer.render( line.end );		
 	}	
 }
