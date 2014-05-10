@@ -20,25 +20,17 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Graphics;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
-import java.awt.geom.Point2D;
+import java.awt.event.WindowAdapter;
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import javax.imageio.ImageIO;
 import javax.swing.JFrame;
@@ -47,30 +39,35 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 import org.apache.commons.lang.StringUtils;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 
 import com.jhlabs.map.proj.MillerCylindrical1Projection;
 
+import de.codesourcery.geoip.locate.CachingGeoLocator;
+import de.codesourcery.geoip.locate.FreeGeoIPLocator;
+import de.codesourcery.geoip.locate.IGeoLocator;
+import de.codesourcery.geoip.render.IImageProjection;
+import de.codesourcery.geoip.render.IMapElement;
+import de.codesourcery.geoip.render.IMapElement.Type;
+import de.codesourcery.geoip.render.IMapElementRenderer;
+import de.codesourcery.geoip.render.IMapElementRendererFactory;
+import de.codesourcery.geoip.render.LineRenderer;
+import de.codesourcery.geoip.render.PointRenderer;
+import de.codesourcery.geoip.render.PointRenderer.MapPoint;
+import de.codesourcery.geoip.render.SimpleMapRenderer;
+import de.codesourcery.geoip.trace.TracePath;
+
 public class Main {
 
-//	private static final Coordinate HAMBURG = Coordinate.coordinateInDegrees( 53.5538148  , 9.9915752 , "Hamburg" , Color.RED );
-	
-	private static final Coordinate ZERO = Coordinate.coordinateInDegrees( 0 , 0 , "ZERO" , Color.GREEN );	
-	
-	private static final Coordinate PARIS = Coordinate.coordinateInDegrees( 48.85341 , 2.3488 , "Paris" , Color.YELLOW );
-	
-	private static final Coordinate NEW_YORK = Coordinate.coordinateInDegrees( 40.7142700 , -74.0059700 , "Paris" , Color.YELLOW );
-	
-	private static final Coordinate MELBOURNE = Coordinate.coordinateInDegrees( -37.814251 , 144.963169 , "Melbourne" , Color.YELLOW );	
-	
-	private static final Coordinate WELLINGTON = Coordinate.coordinateInDegrees( -41.2864800 , 174.7762170 , "Wellington/NZ" , Color.YELLOW );	
-	
-	private static final Coordinate DUBLIN = Coordinate.coordinateInDegrees( 53.3441040 , -6.2674937 , "Dublin" , Color.YELLOW );	
-	
+	protected static final GeoLocation<StringSubject> ZERO       = new GeoLocation<StringSubject>( new StringSubject("ZERO") , 0 , 0 );	
+	protected static final GeoLocation<StringSubject> PARIS      = new GeoLocation<StringSubject>( new StringSubject("Paris") , 48.85341 , 2.3488 );
+	protected static final GeoLocation<StringSubject> NEW_YORK   = new GeoLocation<StringSubject>( new StringSubject("New York")  , 40.7142700 , -74.0059700 );
+	protected static final GeoLocation<StringSubject> MELBOURNE  = new GeoLocation<StringSubject>( new StringSubject("Melbourne")  , -37.814251 , 144.963169 );	
+	protected static final GeoLocation<StringSubject> WELLINGTON = new GeoLocation<StringSubject>( new StringSubject("Wellington/NZ") , -41.2864800 , 174.7762170 );	
+	protected static final GeoLocation<StringSubject> DUBLIN     = new GeoLocation<StringSubject>( new StringSubject("Dublin") , 53.3441040 , -6.2674937 );	
+
 	public static final double SCALE_X = 158.5;
 	public static final double SCALE_Y = 213.0;
-	
+
 	public static void main(String[] args) throws Exception 
 	{
 		final BufferedImage image; 		
@@ -81,24 +78,39 @@ public class Main {
 			}
 			image = ImageIO.read( io );
 		}
-		
+
+		final IGeoLocator<StringSubject> locator = new CachingGeoLocator<StringSubject>( new FreeGeoIPLocator() , StringSubject.class );
+
 		final JFrame frame = new JFrame("dummy");		
+		frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+
+		frame.addWindowListener( new WindowAdapter() 
+		{
+			public void windowClosing(java.awt.event.WindowEvent e) 
+			{
+				try {
+					locator.dispose();
+				} catch (Exception e1) {
+					e1.printStackTrace();
+				}
+			};
+		});
+
 		final MapCanvas canvas = new MapCanvas(image);
 
 		canvas.setScale( SCALE_X , SCALE_Y );
 		canvas.setPreferredSize( new Dimension(640,480 ) );
-		// canvas.addCoordinates( PARIS , ZERO , NEW_YORK , DUBLIN , MELBOURNE , WELLINGTON );
-		
+
 		JPanel panel = new JPanel();
 		panel.setLayout( new FlowLayout() );
-		
+
 		panel.add( new JLabel("Scale-X"));
 		final JTextField scaleX = new JTextField( Double.toString(SCALE_X) );
 		scaleX.setColumns( 5 );
-		
+
 		final JTextField scaleY = new JTextField( Double.toString(SCALE_Y) );
 		scaleY.setColumns( 5 );
-		
+
 		final ActionListener listener = new ActionListener() {
 
 			@Override
@@ -108,92 +120,135 @@ public class Main {
 		};
 		scaleX.addActionListener( listener );
 		scaleY.addActionListener( listener );
-		
+
 		panel.add( new JLabel("Scale-X"));
 		panel.add( scaleX );
 
 		panel.add( new JLabel("Scale-Y"));
 		panel.add( scaleY );
-		
+
 		final JTextField ipAddress = new JTextField( "www.slashdot.org" );
 		ipAddress.setColumns( 20 );
-		
+
 		final ActionListener ipListener = new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) 
 			{
 				final String destinationIP = ipAddress.getText(); 
-				if ( StringUtils.isNotBlank( destinationIP ) ) 
+				if ( StringUtils.isBlank( destinationIP ) ) 
 				{
-					final List<String> ips;
-					try {
-						if ( TracePath.isPathTracingAvailable() ) {
-							ips = TracePath.trace( destinationIP );
-						} else {
-							System.err.println("tracepath not available.");
-							if ( TracePath.isValidIP( destinationIP ) ) {
-								ips = new ArrayList<>();
-								ips.add( destinationIP );
-							} else {
-								System.err.println( destinationIP+" is no valid IP");
-								return;
-							}
-						}
-					} 
-					catch(Exception ex) {
-						System.err.println("Failed to trace "+destinationIP);
-						ex.printStackTrace();
-						return;
-					}
+					return;
+				}
 
-					final List<Coordinate> hops = new ArrayList<>();					
-					for (Iterator<String> it = ips.iterator(); it.hasNext();) 
+				/*
+				 * Perform traceroute.
+				 */
+				final List<String> hops;
+				try {
+					if ( TracePath.isPathTracingAvailable() ) 
 					{
-						String hop = it.next();
-						try 
-						{
-							System.out.println("Retrieving geo-location for "+hop);
-							
-							Coordinate result = resolve( hop );
-							if ( result != null && ! ( result.text != null && result.text.toLowerCase().contains("reserved")) ) 
-							{
-								hops.add( result );
-							}
-							
-						} catch (IOException e1) {
-							System.err.println("Failed to resolve IP "+hop);
-							e1.printStackTrace();
-						}
-						if ( it.hasNext() ) {
-							// be nice and wait some time
-							try {
-								Thread.sleep(300);
-							} catch(Exception ex2) {}							
+						hops = TracePath.trace( destinationIP );
+					} 
+					else 
+					{
+						System.err.println("tracepath not available.");
+						if ( TracePath.isValidAddress( destinationIP ) ) {
+							hops = new ArrayList<>();
+							hops.add( destinationIP );
+						} else {
+							System.err.println( destinationIP+" is no valid IP");
+							return;
 						}
 					}
-					System.out.println("Traced "+destinationIP+" for "+hops.size()+" hops");
-					if ( ! hops.isEmpty() ) 
+				} 
+				catch(Exception ex) {
+					System.err.println("Failed to trace "+destinationIP);
+					ex.printStackTrace();
+					return;
+				}
+
+				System.out.println("Trace contains "+hops.size()+" IPs");
+
+				/*
+				 * Gather locations.
+				 */
+				final List<StringSubject> subjects = new ArrayList<>();
+				for ( String ip : hops ) {
+					subjects.add( new StringSubject(ip) );
+				}
+
+				final List<GeoLocation<StringSubject>> locations;
+				try 
+				{
+					long time = -System.currentTimeMillis();
+					locations = locator.locate( subjects );
+					time += System.currentTimeMillis();
+
+					System.out.println("Locating hops for "+destinationIP+" returned "+locations.size()+" valid locations ( time: "+time+" ms)");
+					System.out.flush();					
+
+				} 
+				catch (Exception e2) 
+				{
+					e2.printStackTrace();
+					return;
+				}
+
+				/*
+				 * Weed-out invalid/unknown locations.
+				 */
+				for (Iterator<GeoLocation<StringSubject>> it = locations.iterator(); it.hasNext();) 
+				{
+					final GeoLocation<StringSubject> location = it.next();
+					if ( ! location.hasValidCoordinates() ) 
 					{
-						canvas.removeAllCoordinates();
-						canvas.addCoordinates( hops.toArray( new Coordinate[ hops.size() ] ) );
-						canvas.repaint();						
+						it.remove();
+						System.err.println("Ignoring invalid location for "+location);
 					}
 				}
+				
+				/*
+				 * Populate chart.
+				 */
+
+				System.out.println("Adding "+locations.size()+" hops to chart");
+				System.out.flush();					
+
+				canvas.removeAllCoordinates();
+
+				if ( locations.size() == 1 ) 
+				{
+					canvas.addCoordinate( PointRenderer.createPoint( locations.get(0) , Color.RED ) );
+				} 
+				else if ( locations.size() > 1 ) 
+				{
+					GeoLocation<StringSubject> previous = locations.get(0);
+					final int len = locations.size();
+					for ( int i = 1 ; i < len ; i++ ) 
+					{
+						final GeoLocation<StringSubject> current = locations.get(i);
+						canvas.addCoordinate( LineRenderer.createLine( previous , current , Color.RED ) );
+						previous = locations.get(i);
+					}
+				}
+				System.out.println("Finished adding");
+				System.out.flush();
+				canvas.repaint();			
 			}
 		};	
 		ipAddress.addActionListener( ipListener );
-		
+
 		panel.add( new JLabel("IP"));		
 		panel.add( ipAddress );
-		
+
 		frame.getContentPane().setLayout( new BorderLayout() );
 		frame.getContentPane().add( panel , BorderLayout.NORTH);
 		frame.getContentPane().add( canvas , BorderLayout.CENTER );
 		frame.pack();
 		frame.setVisible(true);
 	}
-	
+
 	private static void updateScale(JTextField scaleX, JTextField scaleY , MapCanvas canvas) 
 	{
 		try {
@@ -205,277 +260,130 @@ public class Main {
 		catch(Exception e) {
 		}
 	}
-	
-	private static Coordinate resolve(String ipAddress) throws IOException {
-		
-		// freegeoip.net/{format}/{ip_or_hostname}
-		
-        final Map<String, String> response = sendRequest(ipAddress);
-        System.out.println("GOT RESPONSE: \n"+response);
-        if ( response.containsKey( "longitude" ) && response.containsKey("latitude" ) ) {
-        	double latitude = Double.parseDouble( response.get("latitude" ) );
-        	double longitude  = Double.parseDouble( response.get("longitude" ) );
-        	
-        	String text = ipAddress;
-        	if ( response.containsKey("city" ) ) {
-        		text += ", "+response.get("city");
-        	}
-        	if ( response.containsKey( "country_name" ) ) {
-        		text += ", "+response.get("country_name");
-        	}
-        	return Coordinate.coordinateInDegrees( latitude , longitude , text, Color.RED );
-        }
-        return null;
-	}
 
-	private static Map<String,String> sendRequest(String ipAddress) throws MalformedURLException, IOException 
-	{
-    	final StringBuilder builder = new StringBuilder();
-    	final URL api = new URL("http://freegeoip.net/json/"+ipAddress);
-    	final URLConnection yc = api.openConnection(); 
-        try ( BufferedReader in = new BufferedReader(new InputStreamReader(yc.getInputStream())) ) 
-        {
-        	String inputLine;
-        	while ((inputLine = in.readLine()) != null) 
-        	{
-        		builder.append( inputLine );
-        	}
-        } 
-        // {"ip":"213.191.64.208","country_code":"DE","country_name":"Germany","region_code":"","region_name":"","city":"","zipcode":"","latitude":51,"longitude":9,"metro_code":"","area_code":""}
-        return parseJSON( builder.toString() );
-	}
-	
-	private static Map<String,String> parseJSON(String input) 
-	{
-		Map<String,String> result = new HashMap<>();
-		JSONObject obj = new JSONObject( new JSONTokener( input ) );
-		for ( String key :  JSONObject.getNames( obj ) ) {
-			Object value = obj.get(key);
-			if ( value != null ) {
-				result.put( key.toLowerCase() , value.toString() );
-			}
-		}
-		return result;
-	}
-	
-	protected static final class Coordinate 
-	{
-		public final Color color;
-		public final String text;
-		public final double longitudeInDeg;
-		public final double latitudeInDeg;
-		
-		public final Point currentPoint=new Point();
-		
-		private Coordinate(double latitudeInDeg, double longitudeInDeg,String text,Color color) {
-			this.longitudeInDeg = longitudeInDeg;
-			this.latitudeInDeg = latitudeInDeg;
-			this.text = text;
-			this.color = color;
-		}
-		
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			long temp;
-			temp = Double.doubleToLongBits(latitudeInDeg);
-			result = prime * result + (int) (temp ^ (temp >>> 32));
-			temp = Double.doubleToLongBits(longitudeInDeg);
-			result = prime * result + (int) (temp ^ (temp >>> 32));
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			Coordinate other = (Coordinate) obj;
-			if (Double.doubleToLongBits(latitudeInDeg) != Double
-					.doubleToLongBits(other.latitudeInDeg))
-				return false;
-			if (Double.doubleToLongBits(longitudeInDeg) != Double
-					.doubleToLongBits(other.longitudeInDeg))
-				return false;
-			return true;
-		}
-
-
-
-		public double getDistanceToPixel(int x,int y) 
-		{
-			double dx = x - currentPoint.x;
-			double dy = y - currentPoint.y; 
-			return Math.sqrt( dx*dx + dy*dy );
-		}
-		
-		public static Coordinate coordinateInDegrees(double latitudeInDeg, double longitudeInDeg,String text,Color color) {
-			return new Coordinate( latitudeInDeg , longitudeInDeg,text,color); 
-		}
-		
-		public double longitudeInRad() {
-			return Math.toRadians( longitudeInDeg );
-		}
-		
-		public double latitudeInRad() {
-			return Math.toRadians( latitudeInDeg );
-		}		
-	}
-	
 	protected static final class MapCanvas extends JPanel {
-		
-		private final BufferedImage image;
-		private final List<Coordinate> coordinates = new ArrayList<>();
-		
+
+		private final SimpleMapRenderer mapRenderer;
+
 		private int mouseX=-1;
 		private int mouseY=-1;
-		
-		private double scaleX=160;
-		private double scaleY=225;
-		
+
 		private final MouseAdapter mouseAdapter = new MouseAdapter() 
 		{
 			public void mouseMoved(java.awt.event.MouseEvent e) 
 			{
 				mouseX = e.getX();
 				mouseY = e.getY();
-				
-				double distance = Integer.MAX_VALUE;
-				Coordinate bestMatch = null;
-				for ( Coordinate c : coordinates ) 
-				{
-					double d = c.getDistanceToPixel( mouseX ,  mouseY );
-					if ( d <= 5f ) 
-					{
-						if ( bestMatch == null || d < distance ) {
-							bestMatch = c;
-							distance = d;
-						}
-					}
-				}
 
-				setToolTipText( bestMatch == null ? null : bestMatch.text );
+				IMapElement element = mapRenderer.getClosestMapElement( mouseX , mouseY , 15 );
+
+				if ( element != null ) 
+				{
+					element = element.getClosestMapElement( mouseX , mouseY , 15 );
+				}
+				setToolTipText( toTooltip( element ) );
 				MapCanvas.this.repaint();
 			};
 		};
-		
+
+		protected String toTooltip(IMapElement element) 
+		{
+			if ( element != null ) 
+			{
+				switch( element.getType() ) 
+				{
+				case POINT:
+					final MapPoint point = (MapPoint) element;
+					final GeoLocation<?> location = point.location;
+					return location.subject().toString()+
+							",city="+point.location.parameter(GeoLocation.KEY_CITY, "" )+								
+							",country="+point.location.parameter(GeoLocation.KEY_COUNTRY, "" );
+				}
+			}
+			return null;
+		}
+
 		public void removeAllCoordinates() {
-			this.coordinates.clear();
+			mapRenderer.removeAllCoordinates();
 		}
-		
+
 		public void setScale(double scaleX,double scaleY) {
-			this.scaleX = scaleX;
-			this.scaleY = scaleY;
+			mapRenderer.setScale( scaleX,  scaleY );
 		}
-		
+
 		public double getScaleX() {
-			return scaleX;
+			return mapRenderer.getScaleX();
 		}
-		
+
 		public double getScaleY() {
-			return scaleY;
+			return mapRenderer.getScaleY();
 		}
-		
-		public MapCanvas(BufferedImage image) {
+
+		public MapCanvas(BufferedImage image) 
+		{
 			if ( image == null ) {
 				throw new IllegalArgumentException("image must not be NULL");
 			}
-			this.image = image;
+			this.mapRenderer = new SimpleMapRenderer();
+
+			this.mapRenderer.setMapImage( image );
+			this.mapRenderer.setProjection( new MillerCylindrical1Projection() );
+			this.mapRenderer.setOrigin( 0.5 , 0.5009541984732825);
+			this.mapRenderer.setScale(160, 225);
+			this.mapRenderer.setMapElementRendererFactory( new IMapElementRendererFactory() {
+
+				@Override
+				public IMapElementRenderer createRenderer(Type type,IImageProjection projection, Graphics g) 
+				{
+					switch( type ) 
+					{
+					case LINE:
+						return new LineRenderer(projection, g);
+					case POINT:
+						return new PointRenderer(projection, g);
+					default:
+						throw new RuntimeException("Unhandled type "+type);
+					}
+				}
+			});
+
 			addMouseMotionListener( mouseAdapter );
 			setFocusable( true );
 		}
-		
-		public void addCoordinates(Coordinate... c) {
-			if ( c != null ) {
-				this.coordinates.addAll( Arrays.asList(c) );
-			}
+
+		public void addCoordinates(Collection<IMapElement> elements ) {
+			this.mapRenderer.addCoordinates( elements );
 		}
-		
-		public void addCoordinate(Coordinate c) {
-			this.coordinates.add( c );
+
+		public void addCoordinate(IMapElement c) {
+			this.mapRenderer.addCoordinate( c );
 		}
-		
-		public boolean removeCoordinate(Coordinate c) {
-			return this.coordinates.remove(c);
+
+		public boolean removeCoordinate(IMapElement c) {
+			return this.mapRenderer.removeCoordinate( c );
 		}
-		
+
 		@Override
 		protected void paintComponent(Graphics g) 
 		{
 			super.paintComponent(g);
-			
-			g.drawImage( image , 0 , 0 , getWidth() , getHeight() , null );
-			
+
+			mapRenderer.renderMap( g ,  getWidth() ,  getHeight() );
+
 			final double width = getWidth();
 			final double height = getHeight();
-					
-			if ( mouseX != -1 && mouseY != -1 ) {
+
+			if ( mouseX != -1 && mouseY != -1 ) 
+			{
 				double xPercentage = mouseX/width;
 				double yPercentage = mouseY/height;
+
 				g.setColor(Color.BLACK);
 				g.drawString( "X = "+mouseX+" ("+xPercentage+") , Y = "+mouseY+" ("+yPercentage+")" , 15, 15);
-				
+
 				g.drawLine( 0 , mouseY , getWidth() , mouseY );
 				g.drawLine( mouseX , 0 , mouseX , getHeight() );
 			}
-			
-			Point previous = null;
-			for ( Coordinate coordinate : this.coordinates ) 
-			{
-				final Point point = unproject(coordinate);
-				coordinate.currentPoint.setLocation( point );
-				
-				renderPoint( point , coordinate , g );
-				if ( previous != null ) 
-				{
-					g.drawLine( previous.x , previous.y , point.x ,point .y ); 
-				}
-				previous = point;
-			}
-		}
-		
-		protected void renderPoint(Point point,Coordinate coordinate,Graphics g) 
-		{
-			final int radius = 3;
-			
-			g.setColor(coordinate.color);
-			g.fillArc( point.x - radius , point.y-radius , radius*2 , radius*2 , 0 , 360 );			
-		}
-		
-		protected Point unproject(Coordinate c) 
-		{
-			Point2D.Double out = new Point2D.Double(0,0);
-			final MillerCylindrical1Projection projection = new MillerCylindrical1Projection();		
-			projection.project( c.longitudeInRad() , c.latitudeInRad() , out );
-			
-			return toImageCoordinates( out );
-		}
-		
-		protected Point toImageCoordinates(Point2D.Double projection) 
-		{
-			  // This is the size of the globe in the image, typically the width
-			  // (in most projections, the height can be derived from the width).
-			
-			  final double imageWidth = getWidth(); // image gets scaled to canvas size
-			  final double imageHeight = getHeight(); // image gets scaled to canvas size
-					  
-			  // These are where the prime meridian crosses 0° latitude ( 0° longitude, 0° latitude) - all
-			  // lat/long coordinates are relative to this point
-			  
-			  final double xPercentage=0.5,yPercentage=0.5009541984732825; // x=677 , y=525
-
-			  final double IMAGE_GLOBE_CENTER_X = xPercentage * imageWidth; // 473.0
-			  final double IMAGE_GLOBE_CENTER_Y = yPercentage * imageHeight; // 366.0			  
-			  
-			  double scaleX = this.scaleX*(imageWidth/1000.0);
-			  double scaleY = this.scaleY*(imageHeight/1000.0);			  
-			  double x = IMAGE_GLOBE_CENTER_X + projection.x*scaleX;
-			  double y = IMAGE_GLOBE_CENTER_Y - projection.y*scaleY;
-			  return new Point((int) Math.round(x),(int) Math.round(y));
 		}
 	}
 }

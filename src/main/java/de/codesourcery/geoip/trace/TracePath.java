@@ -1,4 +1,19 @@
-package de.codesourcery.geoip;
+/**
+ * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package de.codesourcery.geoip.trace;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -22,10 +37,20 @@ import org.apache.commons.exec.Executor;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.apache.commons.lang.StringUtils;
 
-public class TracePath {
-
+/**
+ * 
+ * @author tobias.gierke@code-sourcery.de
+ */
+public class TracePath 
+{
+	/**
+	 * Filesystem path to the Linux 'tracepath' utility on <b>Ubuntu</b> systems.
+	 */
 	public static final String TRACEPATH = "/usr/bin/tracepath";
 
+	/**
+	 * Filesystem path to the Linux 'traceroute' utility on <b>Ubuntu</b> systems.
+	 */	
 	public static final String TRACEROUTE = "/usr/bin/traceroute.db";
 
 	public static void main(String[] args) throws Exception {
@@ -37,6 +62,11 @@ public class TracePath {
 		}
 	}
 
+	/**
+	 * Check whether path-tracing is available on this system.
+	 * 
+	 * @return
+	 */
 	public static boolean isPathTracingAvailable() {
 		return isTraceRouteAvailable() || isTracePathAvailable();
 	}
@@ -70,6 +100,18 @@ public class TracePath {
 		throw new UnsupportedOperationException("No path tracing available."); 
 	}
 	
+	/**
+	 * Tries to trace all intermediate hops from the local machine to a specific IP address/host name.
+	 * 
+	 * <p>Intermediate hops whose IP address cannot be determined will be removed from the result (so the result
+	 * contains only valid IP addresses).</p>
+	 * 
+	 * @param address
+	 * @return List of IP addresses
+	 * @throws ExecuteException
+	 * @throws IOException
+	 * @throws InterruptedException
+	 */
 	public static List<String> trace(String address) throws ExecuteException, IOException, InterruptedException {
 		IPathTracer tracer = getPathTracer();
 		System.out.print("Tracing path to "+address+" (using "+tracer+") ...");
@@ -101,8 +143,8 @@ public class TracePath {
 				@Override
 				public void write(int b) throws IOException {
 					stdOut.write( b );
-					System.out.write( b );
-					System.out.flush();
+//					System.out.write( b );
+//					System.out.flush();
 				}
 
 				@Override
@@ -152,15 +194,15 @@ public class TracePath {
 			{
 				line = line.trim();
 				String squashWhitespace = squashWhitespace( line );
-				System.out.println("LINE  : "+line);
-				System.out.println("SQUASH: "+squashWhitespace);
-				System.out.println("-----");
+//				System.out.println("LINE  : "+line);
+//				System.out.println("SQUASH: "+squashWhitespace);
+//				System.out.println("-----");
 				final String[] parts = squashWhitespace.split(" ");
 				if ( parts.length < 2 || StringUtils.isBlank( parts[1] ) ) {
 					continue;
 				}
 				String ip = parts[1].trim();
-				if ( isValidIP( ip ) && ! ip.equals( previousHop ) ) { 
+				if ( isValidAddress( ip ) && ! ip.equals( previousHop ) ) { 
 					result.add( ip );
 					previousHop = ip;
 				}
@@ -255,7 +297,14 @@ public class TracePath {
 		}		
 	}
 	
-	public static boolean isValidIP(String s) {
+	/**
+	 * Returns whether a string contains a valid IP address or host name.
+	 * 
+	 * @param s
+	 * @return
+	 */
+	public static boolean isValidAddress(String s) 
+	{
 		if ( StringUtils.isBlank( s ) ) {
 			return false;
 		}
