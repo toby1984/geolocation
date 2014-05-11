@@ -25,15 +25,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.WindowAdapter;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.imageio.ImageIO;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -41,11 +37,10 @@ import javax.swing.JTextField;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.jhlabs.map.proj.MillerCylindrical1Projection;
-
 import de.codesourcery.geoip.locate.CachingGeoLocator;
 import de.codesourcery.geoip.locate.FreeGeoIPLocator;
 import de.codesourcery.geoip.locate.IGeoLocator;
+import de.codesourcery.geoip.locate.MaxMindGeoLocator;
 import de.codesourcery.geoip.render.IImageProjection;
 import de.codesourcery.geoip.render.IMapElement;
 import de.codesourcery.geoip.render.IMapElement.Type;
@@ -64,23 +59,91 @@ public class Main {
 	protected static final GeoLocation<StringSubject> NEW_YORK   = new GeoLocation<StringSubject>( new StringSubject("New York")  , 40.7142700 , -74.0059700 );
 	protected static final GeoLocation<StringSubject> MELBOURNE  = new GeoLocation<StringSubject>( new StringSubject("Melbourne")  , -37.814251 , 144.963169 );	
 	protected static final GeoLocation<StringSubject> WELLINGTON = new GeoLocation<StringSubject>( new StringSubject("Wellington/NZ") , -41.2864800 , 174.7762170 );	
-	protected static final GeoLocation<StringSubject> DUBLIN     = new GeoLocation<StringSubject>( new StringSubject("Dublin") , 53.3441040 , -6.2674937 );	
+	protected static final GeoLocation<StringSubject> DUBLIN     = new GeoLocation<StringSubject>( new StringSubject("Dublin") , 53.3441040 , -6.2674937 );
+	protected static final GeoLocation<StringSubject> HAMBURG = new GeoLocation<StringSubject>( new StringSubject("HAMBURG") , 53.553272  , 9.992092 );		
 
-	public static final double SCALE_X = 158.5;
-	public static final double SCALE_Y = 213.0;
-
+	private static IGeoLocator<StringSubject> createGeoLocator() {
+		
+		if ( MaxMindGeoLocator.isAvailable() ) {
+			System.out.println("Using MaxMind locator");
+			return new MaxMindGeoLocator();
+		}
+		System.out.println("Using freegeoIP locator");
+		return new CachingGeoLocator<StringSubject>( new FreeGeoIPLocator() , StringSubject.class ); 
+	}
+	
+	private static List<StringSubject> getSpammers() {
+		final String[] spammers = {           
+				   "188.51.199.220 ",
+		           "78.93.239.190  ",
+		           "94.183.242.35  ",
+		           "117.199.137.252",
+		           "89.137.17.19   ",
+		           "178.163.110.31 ",
+		           "216.81.74.110  ",
+		           "2.180.185.154  ",
+		           "2.186.145.1    ",
+		           "5.235.200.25   ",
+		           "5.236.246.8    ",
+		           "24.157.16.27   ",
+		           "31.180.238.254 ",
+		           "41.140.90.133  ",
+		           "61.82.125.252  ",
+		           "62.151.202.185 ",
+		           "78.5.33.22     ",
+		           "78.81.248.241  ",
+		           "78.83.199.5    ",
+		           "78.97.60.53    ",
+		           "80.110.56.219  ",
+		           "87.117.229.124 ",
+		           "94.20.114.43   ",
+		           "95.61.65.171   ",
+		           "97.65.70.66    ",
+		           "97.100.99.166  ",
+		           "109.75.128.14  ",
+		           "117.216.117.34 ",
+		           "120.50.93.15   ",
+		           "122.162.136.8  ",
+		           "146.200.150.7  ",
+		           "151.74.153.40  ",
+		           "181.29.78.118  ",
+		           "181.166.91.212 ",
+		           "185.47.49.234  ",
+		           "186.13.6.32    ",
+		           "186.86.77.155  ",
+		           "186.118.37.173 ",
+		           "186.249.200.187",
+		           "187.240.75.133 ",
+		           "188.242.212.166",
+		           "189.193.199.88 ",
+		           "189.200.91.206 ",
+		           "190.103.204.41 ",
+		           "190.109.159.76 ",
+		           "190.124.105.153",
+		           "190.193.76.194 ",
+		           "190.194.48.66  ",
+		           "200.123.55.75  ",
+		           "200.127.61.109 ",
+		           "201.216.221.193",
+		           "206.74.253.82  ",
+		           "212.50.235.138 ",
+		           "212.51.45.194  ",
+		           "212.92.216.240 ",
+		           "212.224.105.138",
+		           "213.153.47.146 "};
+		
+		final List<StringSubject> list = new ArrayList<>();
+		for ( String s : spammers ) {
+			list.add( new StringSubject( s.trim() ) );
+		}
+		return list;
+	}
+	
 	public static void main(String[] args) throws Exception 
 	{
-		final BufferedImage image; 		
-		try ( InputStream io = Main.class.getResourceAsStream("/world_miller_cylindrical.jpg" ) ) 
-		{
-			if ( io == null ) {
-				throw new IOException("failed to open world map image");
-			}
-			image = ImageIO.read( io );
-		}
+		final MapImage image = MapImage.getRobinsonWorldMap();
 
-		final IGeoLocator<StringSubject> locator = new CachingGeoLocator<StringSubject>( new FreeGeoIPLocator() , StringSubject.class );
+		final IGeoLocator<StringSubject> locator = createGeoLocator();
 
 		final JFrame frame = new JFrame("dummy");		
 		frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
@@ -98,25 +161,40 @@ public class Main {
 		});
 
 		final MapCanvas canvas = new MapCanvas(image);
+		
+		for ( GeoLocation<StringSubject> loc : locator.locate( getSpammers() ) ) 
+		{
+			if ( loc.hasValidCoordinates() ) {
+				canvas.addCoordinate( PointRenderer.createPoint( loc , Color.YELLOW ) );
+			}
+		}
 
-		canvas.setScale( SCALE_X , SCALE_Y );
+//		canvas.addCoordinate( PointRenderer.createPoint( ZERO , Color.YELLOW ) );
+//		canvas.addCoordinate( PointRenderer.createPoint( WELLINGTON , Color.RED ) );
+//		canvas.addCoordinate( PointRenderer.createPoint( MELBOURNE , Color.RED ) );
+//		canvas.addCoordinate( PointRenderer.createPoint( HAMBURG , Color.RED ) );
+		
 		canvas.setPreferredSize( new Dimension(640,480 ) );
 
 		JPanel panel = new JPanel();
 		panel.setLayout( new FlowLayout() );
 
 		panel.add( new JLabel("Scale-X"));
-		final JTextField scaleX = new JTextField( Double.toString(SCALE_X) );
+		final JTextField scaleX = new JTextField( Double.toString( image.getScaleX() ) );
 		scaleX.setColumns( 5 );
 
-		final JTextField scaleY = new JTextField( Double.toString(SCALE_Y) );
+		final JTextField scaleY = new JTextField( Double.toString( image.getScaleY() ) );
 		scaleY.setColumns( 5 );
 
 		final ActionListener listener = new ActionListener() {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				updateScale(scaleX, scaleY, canvas);
+				
+				double x = Double.parseDouble( scaleX.getText() );
+				double y = Double.parseDouble( scaleY.getText() );
+				image.setScale(x,y);
+				canvas.repaint();				
 			}
 		};
 		scaleX.addActionListener( listener );
@@ -260,18 +338,6 @@ public class Main {
 		frame.setVisible(true);
 	}
 
-	private static void updateScale(JTextField scaleX, JTextField scaleY , MapCanvas canvas) 
-	{
-		try {
-			double x = Double.parseDouble( scaleX.getText() );
-			double y = Double.parseDouble( scaleY.getText() );
-			canvas.setScale(x,y);
-			canvas.repaint();
-		} 
-		catch(Exception e) {
-		}
-	}
-	
 	protected static String getLabel(GeoLocation<?> location) 
 	{
 		String city = location.parameter(GeoLocation.KEY_CITY, "" ).toString();
@@ -295,9 +361,20 @@ public class Main {
 
 		private int mouseX=-1;
 		private int mouseY=-1;
-
+		
 		private final MouseAdapter mouseAdapter = new MouseAdapter() 
 		{
+			
+			public void mouseClicked(java.awt.event.MouseEvent e) {
+					int x = e.getX();
+					int y = e.getY();
+					MapImage mapImage = mapRenderer.getMapImage();
+					final double xPerc = x / (double) getWidth();
+					final double yPerc = y / (double) getHeight();
+					mapImage.setOriginPercentages( xPerc ,  yPerc );
+					System.out.println( xPerc+","+yPerc );
+			}
+			
 			public void mouseMoved(java.awt.event.MouseEvent e) 
 			{
 				mouseX = e.getX();
@@ -332,19 +409,7 @@ public class Main {
 			mapRenderer.removeAllCoordinates();
 		}
 
-		public void setScale(double scaleX,double scaleY) {
-			mapRenderer.setScale( scaleX,  scaleY );
-		}
-
-		public double getScaleX() {
-			return mapRenderer.getScaleX();
-		}
-
-		public double getScaleY() {
-			return mapRenderer.getScaleY();
-		}
-
-		public MapCanvas(BufferedImage image) 
+		public MapCanvas(MapImage image) 
 		{
 			if ( image == null ) {
 				throw new IllegalArgumentException("image must not be NULL");
@@ -352,9 +417,7 @@ public class Main {
 			this.mapRenderer = new SimpleMapRenderer();
 
 			this.mapRenderer.setMapImage( image );
-			this.mapRenderer.setProjection( new MillerCylindrical1Projection() );
-			this.mapRenderer.setOrigin( 0.5 , 0.5009541984732825);
-			this.mapRenderer.setScale(160, 225);
+			
 			this.mapRenderer.setMapElementRendererFactory( new IMapElementRendererFactory() {
 
 				@Override
@@ -373,7 +436,7 @@ public class Main {
 			});
 
 			addMouseMotionListener( mouseAdapter );
-			setFocusable( true );
+			addMouseListener( mouseAdapter );
 		}
 
 		public void addCoordinates(Collection<IMapElement> elements ) {
@@ -404,7 +467,13 @@ public class Main {
 
 			final double width = getWidth();
 			final double height = getHeight();
-
+			
+//			int xOrig = (int) Math.round( mapRenderer.getMapImage().getXPercentage() * width );
+//			int yOrig = (int) Math.round( mapRenderer.getMapImage().getYPercentage() * height );
+//			g.setColor(Color.RED);
+//			g.drawLine( 0 , yOrig , (int) width , yOrig );
+//			g.drawLine( xOrig , 0 , xOrig, (int) height );
+			
 			if ( mouseX != -1 && mouseY != -1 ) 
 			{
 				double xPercentage = mouseX/width;

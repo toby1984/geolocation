@@ -18,17 +18,16 @@ package de.codesourcery.geoip.render;
 import java.awt.Graphics;
 import java.awt.Point;
 import java.awt.geom.Point2D;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.jhlabs.map.proj.MillerCylindrical1Projection;
 import com.jhlabs.map.proj.Projection;
 
 import de.codesourcery.geoip.Coordinate;
+import de.codesourcery.geoip.MapImage;
 
 /**
  * Simple map renderer.
@@ -39,44 +38,16 @@ public class SimpleMapRenderer implements IMapRenderer {
 	
 	private final Map<IMapElement.Type , List<IMapElement>> coordinates = new HashMap<>();
 	
-	private BufferedImage image;
+	private MapImage image;
 	
-	// Scaling factors used to map cartesian coordinates returned by the 
-	// map projection to actual image coordinates
-	private double scaleX=160;
-	private double scaleY=225;
-	
-    // These are where the prime meridian crosses 0° latitude , 0° longitude - all
-	// lat/long coordinates are relative to this point
-	
-	// these values are percentage values relative to the map image size (e.g. 0.5/0.5 would be right in the center of the image)
-    private double xPercentage=0.5;
-    private double yPercentage=0.5009541984732825;
-    
     private IMapElementRendererFactory rendererFactory;
     
-	private Projection projection = new MillerCylindrical1Projection();	    
-	
 	public void removeAllCoordinates() {
 		this.coordinates.clear();
 	}
 	
 	public void setMapElementRendererFactory(IMapElementRendererFactory factory) {
 		this.rendererFactory = factory;
-	}
-	
-	public void setScale(double scaleX,double scaleY) 
-	{
-		this.scaleX = scaleX;
-		this.scaleY = scaleY;
-	}
-	
-	public double getScaleX() {
-		return scaleX;
-	}
-	
-	public double getScaleY() {
-		return scaleY;
 	}
 	
 	public void addCoordinates(Collection<IMapElement> elements) {
@@ -119,18 +90,26 @@ public class SimpleMapRenderer implements IMapRenderer {
 	
 	private int lastWidth  = -1;
 	private int lastHeight = -1;
+	private boolean invalidationRequired = true;
 
+	private void invalidateMapElements() {
+		for ( IMapElement.Type  t : this.coordinates.keySet() ) 
+		{
+			for ( IMapElement e : this.coordinates.get( t ) ) {
+				e.invalidate();
+			}
+		}
+		invalidationRequired = false;
+	}
+	
 	@Override
 	public void renderMap(Graphics g, final int width, final int height) 
 	{
-		if ( lastWidth != width || lastHeight != height ) 
+		if ( invalidationRequired || image.hasChanged() || lastWidth != width || lastHeight != height ) 
 		{
-			for ( IMapElement.Type  t : this.coordinates.keySet() ) 
-			{
-				for ( IMapElement e : this.coordinates.get( t ) ) {
-					e.invalidate();
-				}
-			}
+			System.out.println("Recalculating projection");
+			invalidateMapElements();
+			image.resetChanged();
 			lastWidth = width;
 			lastHeight = height;
 		}
@@ -141,13 +120,13 @@ public class SimpleMapRenderer implements IMapRenderer {
 			private final int imageHeight=height;
 			private final Point2D.Double projOut = new Point2D.Double();
 			
-			private final double xPercentage = SimpleMapRenderer.this.xPercentage;
-			private final double yPercentage = SimpleMapRenderer.this.yPercentage;
+			private final double xPercentage = image.getOriginXPercentage();
+			private final double yPercentage = image.getOriginYPercentage();
 			
-			private final double scaleX = SimpleMapRenderer.this.scaleX;
-			private final double scaleY = SimpleMapRenderer.this.scaleY;		
+			private final double scaleX = image.getScaleX();
+			private final double scaleY = image.getScaleY();
 			
-			private final Projection projection = SimpleMapRenderer.this.projection;
+			private final Projection projection = image.projection;
 			
 			@Override
 			public void project(Coordinate c, Point out) 
@@ -173,7 +152,7 @@ public class SimpleMapRenderer implements IMapRenderer {
 		};
 		
 		// render map image
-		g.drawImage( image , 0 , 0 , width , height , null );
+		g.drawImage( image.image , 0 , 0 , width , height , null );
 		
 		for ( IMapElement.Type type : this.coordinates.keySet() ) 
 		{
@@ -187,21 +166,11 @@ public class SimpleMapRenderer implements IMapRenderer {
 	}
 	
 	@Override
-	public void setMapImage(BufferedImage image) {
-		this.image = image;
+	public void setMapImage(MapImage mapImage) {
+		this.image = mapImage;
+		invalidationRequired=true;
 	}
 	
-	@Override
-	public void setOrigin(double xPercentage, double yPercentage) {
-		this.xPercentage = xPercentage;
-		this.yPercentage = yPercentage;
-	}
-	
-	@Override
-	public void setProjection(Projection projection) {
-		this.projection = projection;
-	}
-
 	@Override
 	public IMapElement getClosestMapElement(int x, int y, double maxDistanceSquared) 
 	{
@@ -223,5 +192,10 @@ public class SimpleMapRenderer implements IMapRenderer {
 			}
 		}
 		return closest;
+	}
+
+	@Override
+	public MapImage getMapImage() {
+		return image;
 	}
 }

@@ -16,9 +16,8 @@
 package de.codesourcery.geoip.render;
 
 import java.awt.Graphics;
-import java.awt.image.BufferedImage;
 
-import com.jhlabs.map.proj.Projection;
+import de.codesourcery.geoip.MapImage;
 
 /**
  * Implementations render a map image with {@link IMapElement}s on top.
@@ -33,36 +32,16 @@ public interface IMapRenderer
 	 * Make sure to also set a {@link Projection) matching the image.
 	 * 
 	 * @param image
-	 * @see #setProjection(Projection)
+	 * @see #getMapImage()
 	 */
-	public void setMapImage(BufferedImage image);
+	public void setMapImage(MapImage image);
 	
 	/**
-	 * Sets some magic scaling factors used to map the cartesian
-	 * coordinates returned by {@link Projection#project(double, double, java.awt.geom.Point2D.Double)}
-	 * onto the map image.
+	 * Returns the map image currently being used.
 	 * 
-	 * @param scaleX
-	 * @param scaleY
-	 * 
-	 * @see #getScaleX()
-	 * @see #getScaleY()
+	 * @return
 	 */
-	public void setScale(double scaleX,double scaleY);
-	
-	public double getScaleX();
-	
-	public double getScaleY();
-	
-	/**
-	 * Specifies the origin of the globe (0° latitude, 0° longitude) on the map image.
-	 *   
-	 * @param xPercentage percentage value (range 0...1) relative to the width of the map image. 0 = left-most pixel, 1 = right-most pixel
-	 * @param yPercentage percentage value (range 0...1) relative to the height of the map image. 0 = top-most pixel, 1 = bottom-most pixel
-	 * 
-	 * @see #setMapImage(BufferedImage)
-	 */
-	public void setOrigin(double xPercentage,double yPercentage);
+	public MapImage getMapImage();
 	
 	/**
 	 * Renders the map image along with any associated {@link IMapElement}s to a specific
@@ -92,11 +71,4 @@ public interface IMapRenderer
 	 * @return
 	 */
 	public IMapElement getClosestMapElement(int x,int y,double maxDistance);
-
-	/**
-	 * Sets the projection to use to map latitude/longitude to image (pixel) coordinates.
-	 * 
-	 * @param projection
-	 */
-	public void setProjection(Projection projection);
 }
