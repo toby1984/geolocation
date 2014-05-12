@@ -17,6 +17,8 @@ package de.codesourcery.geoip.render;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Rectangle;
+import java.awt.geom.Line2D;
 
 import de.codesourcery.geoip.GeoLocation;
 import de.codesourcery.geoip.render.PointRenderer.MapPoint;
@@ -45,6 +47,24 @@ public final class LineRenderer implements IMapElementRenderer {
 			this.start = start;
 			this.end = end;
 			this.color = color;
+		}
+		
+		@Override
+		public boolean isVisible(IImageProjection projection) 
+		{
+			if ( ! isValid ) {
+				calculateCoordinates( projection );
+			}
+			
+			final int minX = Math.min( start.point.x , end.point.x );
+			final int maxX = Math.max( start.point.x , end.point.x );
+			
+			final int minY = Math.min( start.point.y , end.point.y );
+			final int maxY = Math.max( start.point.y , end.point.y );
+
+			final Line2D.Float l = new Line2D.Float(minX,minY,maxX,maxY);
+			final Rectangle rect = new Rectangle(0 , 0 , projection.getWidthInPixels() , projection.getHeightInPixels() );
+			return rect.intersectsLine( l );
 		}
 		
 		@Override

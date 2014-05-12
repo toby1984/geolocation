@@ -17,8 +17,8 @@ import com.jhlabs.map.proj.RobinsonProjection;
  */
 public class MapImage {
 
-	public final BufferedImage image;
-	public final Projection projection;
+	private final BufferedImage image;
+	private final Projection projection;
 	
 	// Scaling factors used to map cartesian coordinates returned by the 
 	// map projection to actual image coordinates
@@ -41,6 +41,38 @@ public class MapImage {
 			}
 			return ImageIO.read( io );
 		}
+    }
+    
+    public MapImageRegion limit(MapImageRegion input) {
+    	
+    	int x0 = input.xOrigin;
+    	int y0 = input.yOrigin;
+    	int width = input.width;
+    	int height = input.height;
+    	
+    	if ( x0 < 0 || y0 < 0 || x0 >= width() || y0 >= height() ||
+    		 ( x0+width) >= width() || (y0+height) >= height() ) 
+    	{
+    		return new MapImageRegion(0,0,width(),height());
+    	}
+    	return input;
+    }
+    
+    public MapImageRegion fullRegion() 
+    {
+    	return new MapImageRegion( 0 , 0 , image.getWidth() , image.getHeight() );
+    }    
+    
+    public BufferedImage getImage() {
+		return image;
+	}
+    
+    public int width() {
+    	return image.getWidth();
+    }
+    
+    public int height() {
+    	return image.getHeight();
     }
     
 	public static MapImage getRobinsonWorldMap() throws IOException 
@@ -115,5 +147,9 @@ public class MapImage {
 	
 	public double getOriginYPercentage() {
 		return originYPercentage;
-	}	
+	}
+	
+	public Projection getProjection() {
+		return projection;
+	}
 }

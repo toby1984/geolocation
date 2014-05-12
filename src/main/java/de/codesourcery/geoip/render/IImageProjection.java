@@ -37,4 +37,8 @@ public interface IImageProjection {
 	 * @param out method result, image coordinates
 	 */
 	public void project(Coordinate cartesianCoordinates,Point out);
+	
+	public int getWidthInPixels();
+	
+	public int getHeightInPixels();
 }

@@ -18,6 +18,7 @@ package de.codesourcery.geoip.render;
 import java.awt.Graphics;
 
 import de.codesourcery.geoip.MapImage;
+import de.codesourcery.geoip.MapImageRegion;
 
 /**
  * Implementations render a map image with {@link IMapElement}s on top.
@@ -48,10 +49,11 @@ public interface IMapRenderer
 	 * {@link Graphics} context.
 	 * 
 	 * @param g context to use for rendering
+	 * @param region Region of map image that should be rendered
 	 * @param width desired width in pixels
 	 * @param height desired height in pixels
 	 */
-	public void renderMap(Graphics g , int width, int height);
+	public void renderMap(Graphics g , MapImageRegion region, int width, int height);
 	
 	/**
 	 * Sets the renderer factory to be used.

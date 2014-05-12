@@ -57,6 +57,14 @@ public interface IMapElement {
 	 */
 	public void calculateCoordinates(IImageProjection projection);
 	
+	/**
+	 * Check whether this map element is (at least partially) visible for a given image projection.
+	 * 
+	 * @param projection
+	 * @return
+	 */
+	public boolean isVisible(IImageProjection projection);
+	
 	public Type getType();
 	
 	public boolean hasType(Type t);

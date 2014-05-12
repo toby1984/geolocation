@@ -52,6 +52,17 @@ public class PointRenderer implements IMapElementRenderer {
 		}		
 		
 		@Override
+		public boolean isVisible(IImageProjection projection) 
+		{
+			if ( ! isValid ) {
+				calculateCoordinates( projection );
+			}
+			final Point p = new Point();
+			projection.project( location.coordinate() , p );
+			return p.x >= 0 && p.y >= 0 && p.x < projection.getWidthInPixels() && p.y < projection.getHeightInPixels();
+		}
+		
+		@Override
 		public double distanceSquared(int x, int y) 
 		{
 			double dx = x - this.point.x;
