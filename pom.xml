@@ -146,6 +146,7 @@
           <mainClass>de.codesourcery.geoip.Main</mainClass>
         </configuration>
       </plugin>
+<!--
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-enforcer-plugin</artifactId>
@@ -165,12 +166,13 @@
                   <banSnapshots>true</banSnapshots>
                   <phases>package</phases>
                 </requirePluginVersions>
-                <!-- <unCheckedPluginsList>org.apache.maven.plugins:maven-enforcer-plugin</unCheckedPluginsList> -->
+                <unCheckedPluginsList>org.apache.maven.plugins:maven-enforcer-plugin</unCheckedPluginsList>
               </rules>
             </configuration>
           </execution>
         </executions>
       </plugin>
+-->
     </plugins>
   </build>
   <reporting>
