@@ -34,12 +34,10 @@ public final class LineRenderer implements IMapElementRenderer {
 	private final IImageProjection imageProject;
 	private final PointRenderer pointRenderer;
 	
-	public static final class MapLine implements IMapElement 
+	public static class MapLine implements IMapElement 
 	{
 		public final MapPoint start;
 		public final MapPoint end;
-		
-		public boolean isValid = false;
 		
 		public final Color color;
 		
@@ -52,7 +50,7 @@ public final class LineRenderer implements IMapElementRenderer {
 		@Override
 		public boolean isVisible(IImageProjection projection) 
 		{
-			if ( ! isValid ) {
+			if ( ! isValid() ) {
 				calculateCoordinates( projection );
 			}
 			
@@ -74,6 +72,11 @@ public final class LineRenderer implements IMapElementRenderer {
 			double d2 = start.distanceSquared(x,y);
 			return d1 < d2 ? d1 : d2;
 		}
+		
+		@Override
+		public boolean isValid() {
+			return start.isValid() && end.isValid();
+		}
 
 		@Override
 		public Type getType() {
@@ -87,7 +90,8 @@ public final class LineRenderer implements IMapElementRenderer {
 
 		@Override
 		public void invalidate() {
-			isValid = false;
+			start.invalidate();
+			end.invalidate();
 		}
 
 		@Override
@@ -95,7 +99,6 @@ public final class LineRenderer implements IMapElementRenderer {
 		{
 			start.calculateCoordinates( projection );
 			end.calculateCoordinates( projection );
-			isValid = true;
 		}
 		
 		@Override
@@ -140,7 +143,7 @@ public final class LineRenderer implements IMapElementRenderer {
 	public void render(IMapElement element) 
 	{
 		final MapLine line = (MapLine) element;
-		if ( ! line.isValid ) {
+		if ( ! line.isValid() ) {
 			line.calculateCoordinates( imageProject );
 		}
 		

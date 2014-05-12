@@ -25,7 +25,7 @@ import com.jhlabs.map.proj.Projection;
 
 import de.codesourcery.geoip.Coordinate;
 import de.codesourcery.geoip.MapImage;
-import de.codesourcery.geoip.MapImageRegion;
+import de.codesourcery.geoip.ImageRegion;
 
 /**
  * Simple map renderer.
@@ -100,11 +100,11 @@ public class SimpleMapRenderer implements IMapRenderer {
 		invalidationRequired = false;
 	}
 	
-	private MapImageRegion lastRegion=null;
+	private ImageRegion lastRegion=null;
 	private BufferedImage scaledImage;
 
 	@Override
-	public void renderMap(Graphics g, final MapImageRegion region, final int width, final int height) 
+	public void renderMap(Graphics g, final ImageRegion region, final int width, final int height) 
 	{
 		final boolean sizeChanged = lastWidth != width || lastHeight != height;
 		final boolean regionChanged = lastRegion == null || ! lastRegion.equals(region);

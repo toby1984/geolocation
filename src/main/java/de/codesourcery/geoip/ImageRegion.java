@@ -11,7 +11,7 @@ import java.awt.geom.Point2D;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class MapImageRegion {
+public class ImageRegion {
 
 	// left-upper corner
 	public final int xOrigin;
@@ -20,7 +20,7 @@ public class MapImageRegion {
 	public final int width;
 	public final int height;
 
-	public MapImageRegion(MapImageRegion other) 
+	public ImageRegion(ImageRegion other) 
 	{
 		this.xOrigin = other.xOrigin;
 		this.yOrigin = other.yOrigin;
@@ -94,7 +94,7 @@ public class MapImageRegion {
 		dim.height = height;
 	}
 	
-	public MapImageRegion(int x0,int y0,int width,int height) 
+	public ImageRegion(int x0,int y0,int width,int height) 
 	{
 		this.xOrigin = x0;
 		this.yOrigin = y0;
@@ -127,10 +127,10 @@ public class MapImageRegion {
 		if (obj == null) {
 			return false;
 		}
-		if (!(obj instanceof MapImageRegion)) {
+		if (!(obj instanceof ImageRegion)) {
 			return false;
 		}
-		MapImageRegion other = (MapImageRegion) obj;
+		ImageRegion other = (ImageRegion) obj;
 		if (height != other.height) {
 			return false;
 		}
@@ -145,5 +145,4 @@ public class MapImageRegion {
 		}
 		return true;
 	}
-
 }

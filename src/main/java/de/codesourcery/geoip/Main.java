@@ -15,19 +15,40 @@
  */
 package de.codesourcery.geoip;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
-import javax.swing.*;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
 
 import org.apache.commons.lang.StringUtils;
 
-import de.codesourcery.geoip.locate.*;
-import de.codesourcery.geoip.render.*;
-import de.codesourcery.geoip.render.IMapElement.Type;
+import de.codesourcery.geoip.locate.CachingGeoLocator;
+import de.codesourcery.geoip.locate.FreeGeoIPLocator;
+import de.codesourcery.geoip.locate.IGeoLocator;
+import de.codesourcery.geoip.locate.MaxMindGeoLocator;
+import de.codesourcery.geoip.render.CurvedLineRenderer;
+import de.codesourcery.geoip.render.DefaultMapElementRendererFactory;
+import de.codesourcery.geoip.render.IMapElement;
+import de.codesourcery.geoip.render.PointRenderer;
 import de.codesourcery.geoip.render.PointRenderer.MapPoint;
+import de.codesourcery.geoip.render.SimpleMapRenderer;
 import de.codesourcery.geoip.trace.TracePath;
 
 public class Main {
@@ -119,12 +140,9 @@ public class Main {
 	
 	public static void main(String[] args) throws Exception 
 	{
-		final MapImage image = MapImage.getRobinsonWorldMap();
-//		final MapImage image = MapImage.getMillerWorldMap();
-
 		final IGeoLocator<StringSubject> locator = createGeoLocator();
 
-		final JFrame frame = new JFrame("dummy");		
+		final JFrame frame = new JFrame("GeoIP");		
 		frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
 
 		frame.addWindowListener( new WindowAdapter() 
@@ -139,6 +157,7 @@ public class Main {
 			};
 		});
 
+		final MapImage image = MapImage.getRobinsonWorldMap(); // MapImage.getMillerWorldMap();		
 		final MapCanvas canvas = new MapCanvas(image);
 		
 		for ( GeoLocation<StringSubject> loc : locator.locate( getSpammers() ) ) 
@@ -152,7 +171,6 @@ public class Main {
 //		canvas.addCoordinate( PointRenderer.createPoint( WELLINGTON , Color.RED ) );
 //		canvas.addCoordinate( PointRenderer.createPoint( MELBOURNE , Color.RED ) );
 //		canvas.addCoordinate( PointRenderer.createPoint( HAMBURG , Color.RED ) );
-		
 		
 		final double heightToWidth = image.height() / (double) image.width(); // preserve aspect ratio of map
 		canvas.setPreferredSize( new Dimension(640,(int) Math.round( 640 * heightToWidth )) );
@@ -187,7 +205,7 @@ public class Main {
 		panel.add( new JLabel("Scale-Y"));
 		panel.add( scaleY );
 
-		final JTextField ipAddress = new JTextField( "www.slashdot.org" );
+		final JTextField ipAddress = new JTextField( "www.kickstarter.com" );
 		ipAddress.setColumns( 20 );
 
 		final ActionListener ipListener = new ActionListener() {
@@ -294,9 +312,11 @@ public class Main {
 					for ( int i = 1 ; i < len ; i++ ) 
 					{
 						final GeoLocation<StringSubject> current = locations.get(i);
-						final MapPoint currentPoint = PointRenderer.createPoint( current , getLabel( current ) , Color.BLACK );
+//						final MapPoint currentPoint = PointRenderer.createPoint( current , getLabel( current ) , Color.BLACK );
+						final MapPoint currentPoint = PointRenderer.createPoint( current , Color.BLACK );						
 						
-						canvas.addCoordinate( LineRenderer.createLine( previousPoint , currentPoint , Color.RED ) );
+//						canvas.addCoordinate( LineRenderer.createLine( previousPoint , currentPoint , Color.RED ) );
+						canvas.addCoordinate( CurvedLineRenderer.createLine( previousPoint , currentPoint , Color.RED ) );
 						
 						previous = locations.get(i);
 						previousPoint = currentPoint;
@@ -346,7 +366,7 @@ public class Main {
 		protected Point selectionStart= null;
 		protected boolean dragging = false;		
 		
-		protected MapImageRegion currentRegion;
+		protected ImageRegion currentRegion;
 		
 		private final MouseAdapter mouseAdapter = new MouseAdapter() 
 		{
@@ -356,24 +376,9 @@ public class Main {
 				{
 					selectionStart=new Point(e.getX() , e.getY() );
 					dragging = true;
-					System.out.println("Clicked: "+selectionStart);
 				}
 			}
 					
-			public void mouseClicked(java.awt.event.MouseEvent e) 
-			{
-				if ( e.getButton() == MouseEvent.BUTTON2 ) 
-				{
-					int x = e.getX();
-					int y = e.getY();
-					MapImage mapImage = mapRenderer.getMapImage();
-					final double xPerc = x / (double) getWidth();
-					final double yPerc = y / (double) getHeight();
-					mapImage.setOriginPercentages( xPerc ,  yPerc );
-					System.out.println( xPerc+","+yPerc );
-				}
-			}
-			
 			public void mouseReleased(MouseEvent e) 
 			{
 				if ( e.getButton() == MouseEvent.BUTTON3 ) {
@@ -404,7 +409,7 @@ public class Main {
 					final int newWidth = p1.x - p0.x;
 					final int newHeight = (int) Math.round( newWidth*heightToWidth ); // preserve aspect ratio
 
-					currentRegion = new MapImageRegion( p0.x , p0.y , newWidth , newHeight );
+					currentRegion = new ImageRegion( p0.x , p0.y , newWidth , newHeight );
 					
 					// update display
 					selectionStart = null;
@@ -422,8 +427,7 @@ public class Main {
 					mouseY = e.getY();
 					MapCanvas.this.repaint();
 				}
-				
-			};
+			}
 			
 			public void mouseMoved(java.awt.event.MouseEvent e) 
 			{
@@ -450,6 +454,8 @@ public class Main {
 				case POINT:
 					final MapPoint point = (MapPoint) element;
 					return getLabel( point.location );
+				default:
+						return null;
 				}
 			}
 			return null;
@@ -457,17 +463,6 @@ public class Main {
 		
 		private void zoomOut() 
 		{
-			
-			/* (0,0)
-			 * +-------------------+
-			 * |                   |
-			 * |    P0             |
-			 * |     +---------+   | 
-			 * |     |  X      |   |
-			 * |     +---------+P1 |
-			 * +-------------------+ (getWidth(),getHeight())
-			 */
-			
 			Point p0 = new Point();
 			Point p1 = new Point();
 			
@@ -485,7 +480,7 @@ public class Main {
 			p0.x = centerX - newWidth/2;
 			p0.y = centerY - newHeight/2;
 			
-			currentRegion = mapRenderer.getMapImage().limit( new MapImageRegion( p0.x, p0.y , newWidth , newHeight ) );
+			currentRegion = mapRenderer.getMapImage().limit( new ImageRegion( p0.x, p0.y , newWidth , newHeight ) );
 			
 			System.out.println("Zooming out to "+currentRegion);
 			MapCanvas.this.repaint();
@@ -501,27 +496,9 @@ public class Main {
 				throw new IllegalArgumentException("image must not be NULL");
 			}
 			this.mapRenderer = new SimpleMapRenderer();
-
 			this.mapRenderer.setMapImage( image );
-			
 			this.currentRegion = image.fullRegion();
-			
-			this.mapRenderer.setMapElementRendererFactory( new IMapElementRendererFactory() {
-
-				@Override
-				public IMapElementRenderer createRenderer(Type type,IImageProjection projection, Graphics g) 
-				{
-					switch( type ) 
-					{
-					case LINE:
-						return new LineRenderer(projection, g);
-					case POINT:
-						return new PointRenderer(projection, g);
-					default:
-						throw new RuntimeException("Unhandled type "+type);
-					}
-				}
-			});
+			this.mapRenderer.setMapElementRendererFactory( new DefaultMapElementRendererFactory() );
 
 			addMouseMotionListener( mouseAdapter );
 			addMouseListener( mouseAdapter );
@@ -555,15 +532,6 @@ public class Main {
 			
 			mapRenderer.renderMap( g ,  currentRegion , getWidth() ,  getHeight() );
 
-			final double width = getWidth();
-			final double height = getHeight();
-			
-//			int xOrig = (int) Math.round( mapRenderer.getMapImage().getXPercentage() * width );
-//			int yOrig = (int) Math.round( mapRenderer.getMapImage().getYPercentage() * height );
-//			g.setColor(Color.RED);
-//			g.drawLine( 0 , yOrig , (int) width , yOrig );
-//			g.drawLine( xOrig , 0 , xOrig, (int) height );
-			
 			if ( dragging && selectionStart != null ) 
 			{
 				final int minX = Math.min( selectionStart.x , mouseX );
@@ -578,12 +546,7 @@ public class Main {
 			
 			if ( ! dragging && mouseX != -1 && mouseY != -1 ) 
 			{
-				double xPercentage = mouseX/width;
-				double yPercentage = mouseY/height;
-
 				g.setColor(Color.BLACK);
-				g.drawString( "X = "+mouseX+" ("+xPercentage+") , Y = "+mouseY+" ("+yPercentage+")" , 15, 15);
-
 				g.drawLine( 0 , mouseY , getWidth() , mouseY );
 				g.drawLine( mouseX , 0 , mouseX , getHeight() );
 			}

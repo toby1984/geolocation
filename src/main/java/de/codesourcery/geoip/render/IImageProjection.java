@@ -24,21 +24,29 @@ import de.codesourcery.geoip.Coordinate;
 /**
  * Implementations know how to map cartesian coordinates
  * returned by {@link Projection#project(double, double, java.awt.geom.Point2D.Double)}
- * onto some image.
+ * onto a destination image.
  * 
  * @author tobias.gierke@code-sourcery.de
  */
 public interface IImageProjection {
 
 	/**
-	 * Map cartesian coordinates to image coordinates.
+	 * Map cartesian coordinates to image (view) coordinates.
 	 * 
 	 * @param cartesianCoordinates Coordinates returned by {@link Projection#project(double, double, java.awt.geom.Point2D.Double)}
 	 * @param out method result, image coordinates
 	 */
 	public void project(Coordinate cartesianCoordinates,Point out);
 	
+	/**
+	 * Returns the destination's image width.
+	 * @return
+	 */
 	public int getWidthInPixels();
 	
+	/**
+	 * Returns the destination's image height.
+	 * @return
+	 */
 	public int getHeightInPixels();
 }

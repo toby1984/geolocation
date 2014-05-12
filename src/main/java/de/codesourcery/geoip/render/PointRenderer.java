@@ -79,6 +79,11 @@ public class PointRenderer implements IMapElementRenderer {
 		public boolean hasType(Type t) {
 			return t.equals( IMapElement.Type.POINT );
 		}
+		
+		@Override
+		public boolean isValid() {
+			return isValid;
+		}
 
 		@Override
 		public void invalidate() {

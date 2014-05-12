@@ -43,7 +43,7 @@ public class MapImage {
 		}
     }
     
-    public MapImageRegion limit(MapImageRegion input) {
+    public ImageRegion limit(ImageRegion input) {
     	
     	int x0 = input.xOrigin;
     	int y0 = input.yOrigin;
@@ -53,14 +53,14 @@ public class MapImage {
     	if ( x0 < 0 || y0 < 0 || x0 >= width() || y0 >= height() ||
     		 ( x0+width) >= width() || (y0+height) >= height() ) 
     	{
-    		return new MapImageRegion(0,0,width(),height());
+    		return new ImageRegion(0,0,width(),height());
     	}
     	return input;
     }
     
-    public MapImageRegion fullRegion() 
+    public ImageRegion fullRegion() 
     {
-    	return new MapImageRegion( 0 , 0 , image.getWidth() , image.getHeight() );
+    	return new ImageRegion( 0 , 0 , image.getWidth() , image.getHeight() );
     }    
     
     public BufferedImage getImage() {

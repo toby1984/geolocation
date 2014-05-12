@@ -38,7 +38,8 @@ public interface IMapElement {
 		/**
 		 * Renders a line between two {@link GeoLocation}s that each will be rendered using a {@link #POINT}.
 		 */
-		LINE;
+		LINE,
+		CURVED_LINE;
 	}
 
 	/**
@@ -46,8 +47,17 @@ public interface IMapElement {
 	 * the next rendering.
 	 * 
 	 * @see #calculateCoordinates(IImageProjection)
+	 * @see #isValid()
 	 */
 	public void invalidate();
+	
+	/**
+	 * Check whether any cached image coordinates are still valid.
+	 * 
+	 * @return
+	 * @see #invalidate()
+	 */
+	public boolean isValid();
 
 	/**
 	 * Recalculate any internally cached image coordinates using a given {@link IImageProjection}.
