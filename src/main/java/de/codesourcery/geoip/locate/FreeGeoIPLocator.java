@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,20 +37,11 @@ import de.codesourcery.geoip.StringSubject;
  * 
  * @author tobias.gierke@code-sourcery.de
  */
-public class FreeGeoIPLocator implements IGeoLocator<StringSubject> 
+public class FreeGeoIPLocator extends AbstractGeoLocator<StringSubject> 
 {
 	private static final int THROTTLE_MILLIS = 300;
 	
 	private final AtomicLong lastRequestTime = new AtomicLong(0);
-	
-	public List<GeoLocation<StringSubject>> locate(Collection<StringSubject> addresses) throws Exception 
-	{
-		final List<GeoLocation<StringSubject>> result = new ArrayList<>();
-		for ( StringSubject s : addresses ) {
-			result.add( locate( s ) );
-		}
-		return result;
-	}
 	
 	@Override
 	public synchronized GeoLocation<StringSubject> locate(StringSubject ipAddress) throws Exception 
@@ -92,7 +83,7 @@ public class FreeGeoIPLocator implements IGeoLocator<StringSubject>
         if ("Reserved".equals( country ) ) {
         	return new GeoLocation<StringSubject>(ipAddress);
         }
-        return new GeoLocation<StringSubject>(ipAddress,latitude,longitude,true).setParameter( GeoLocation.KEY_CITY , city ).setParameter( GeoLocation.KEY_COUNTRY, country);
+        return new GeoLocation<StringSubject>(ipAddress,latitude,longitude).setParameter( GeoLocation.KEY_CITY , city ).setParameter( GeoLocation.KEY_COUNTRY, country);
 	}
 	
 	private static String objToString(Object obj) {
@@ -112,11 +103,8 @@ public class FreeGeoIPLocator implements IGeoLocator<StringSubject>
 		return result;
 	}
 
-	@Override
-	public void dispose() {
-	}
-
-	@Override
-	public void flushCaches() {
-	}	
+    @Override
+    public boolean isAvailable() {
+        return true;
+    }	
 }

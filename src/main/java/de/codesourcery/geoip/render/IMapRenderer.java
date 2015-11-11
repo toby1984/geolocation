@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,10 @@
 package de.codesourcery.geoip.render;
 
 import java.awt.Graphics;
+import java.util.Collection;
 
-import de.codesourcery.geoip.MapImage;
 import de.codesourcery.geoip.ImageRegion;
+import de.codesourcery.geoip.MapImage;
 
 /**
  * Implementations render a map image with {@link IMapElement}s on top.
@@ -43,6 +44,13 @@ public interface IMapRenderer
 	 * @return
 	 */
 	public MapImage getMapImage();
+	
+	/**
+	 * Returns all map elements known to this renderer.
+	 * 
+	 * @return
+	 */
+	public Collection<IMapElement> getMapElements();
 	
 	/**
 	 * Renders the map image along with any associated {@link IMapElement}s to a specific

@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 package de.codesourcery.geoip.render;
 
+import java.util.Map;
+
 import de.codesourcery.geoip.GeoLocation;
 
 /**
@@ -22,8 +24,14 @@ import de.codesourcery.geoip.GeoLocation;
  *  
  * @author tobias.gierke@code-sourcery.de
  */
-public interface IMapElement {
-
+public interface IMapElement 
+{
+    /**
+     * 
+     * @see #get
+     */
+    public static final String ATTRIBUTE_RENDER_LABEL = "render_label";
+    
 	/**
 	 * Supported map element types.
 	 *  
@@ -99,4 +107,10 @@ public interface IMapElement {
 	 * @return
 	 */	
 	public IMapElement getClosestMapElement(int x, int y, double maxDistanceSquared);	
+	
+	/**
+	 * Returns the attributes of this map element.
+	 * @return
+	 */
+	public Map<String,Object> getAttributes();
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package de.codesourcery.geoip.render;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Point;
+import java.util.HashMap;
+import java.util.Map;
 
 import de.codesourcery.geoip.GeoLocation;
 
@@ -38,6 +40,7 @@ public class PointRenderer implements IMapElementRenderer {
 		public final String label;
 		public boolean isValid = false;
 		public final Color color;
+		public final Map<String,Object> attributes = new HashMap<>();
 		
 		public MapPoint(GeoLocation<?> location,Color color) {
 			this.location = location;
@@ -103,6 +106,11 @@ public class PointRenderer implements IMapElementRenderer {
 			double distanceSquared = distanceSquared( x ,  y );
 			return ( distanceSquared <= maxDistanceSquared ) ? this : null; 
 		}
+
+        @Override
+        public Map<String, Object> getAttributes() {
+            return attributes;
+        }
 	}
 	
 	public static MapPoint createPoint(GeoLocation<?> location,Color color) {
@@ -131,7 +139,7 @@ public class PointRenderer implements IMapElementRenderer {
 		g.setColor( point.color );
 		g.fillArc( point.point.x - radius , point.point.y - radius , radius*2 , radius*2 , 0 , 360 );			
 		
-		if ( point.label != null ) {
+		if ( point.label != null && element.getAttributes().containsKey( IMapElement.ATTRIBUTE_RENDER_LABEL ) ) {
 			g.drawString( point.label ,  point.point.x + radius + 1,  point.point.y - radius - 1 );
 		}
 	}	

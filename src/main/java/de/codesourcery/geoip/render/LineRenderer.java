@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Rectangle;
 import java.awt.geom.Line2D;
+import java.util.HashMap;
+import java.util.Map;
 
 import de.codesourcery.geoip.GeoLocation;
 import de.codesourcery.geoip.render.PointRenderer.MapPoint;
@@ -40,6 +42,8 @@ public final class LineRenderer implements IMapElementRenderer {
 		public final MapPoint end;
 		
 		public final Color color;
+		
+		public final Map<String,Object> attributes = new HashMap<>();
 		
 		public MapLine(MapPoint start,MapPoint end,Color color) {
 			this.start = start;
@@ -116,7 +120,12 @@ public final class LineRenderer implements IMapElementRenderer {
 				return end;
 			}
 			return null;
-		}		
+		}
+
+        @Override
+        public Map<String, Object> getAttributes() {
+            return attributes;
+        }		
 	}
 	
 	public static MapLine createLine(GeoLocation<?> start,GeoLocation<?> end , Color color) 

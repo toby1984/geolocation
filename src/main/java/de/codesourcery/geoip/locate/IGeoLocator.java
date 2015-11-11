@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,14 +30,31 @@ import de.codesourcery.geoip.ISubject;
  */
 public interface IGeoLocator<SUBJECT extends ISubject<?>>
 {
+    /**
+     * Callback used to report processing progress.
+     *
+     * @author tobias.gierke@voipfuture.com
+     */
+    public interface IProgressListener 
+    {
+        /**
+         * 
+         * @param currentItem value ranging from 0...<code>totalItemCount</code>
+         * @param totalItemCount total number of items
+         * @return <code>true</code> if operation should continue, <code>false</code> if user decided to cancel
+         */
+        public boolean progress(int currentItem,int totalItemCount);
+    }
+    
 	/**
 	 * Retrieve location information associated with a specific collection of subjects.
 	 * 
 	 * @param subjects
+	 * @param progressListener callback invoked as resolving locations is progressing
 	 * @return
 	 * @throws Exception
 	 */
-	public List<GeoLocation<SUBJECT>> locate(Collection<SUBJECT> subjects) throws Exception;
+	public List<GeoLocation<SUBJECT>> locate(Collection<SUBJECT> subjects, IProgressListener progressListener) throws Exception;
 	
 	/**
 	 * Retrieve location information associated with a specific subject.
@@ -61,4 +78,10 @@ public interface IGeoLocator<SUBJECT extends ISubject<?>>
 	 * @throws Exception
 	 */
 	public void dispose() throws Exception;
+	
+	/**
+	 * Returns whether the underlying API etc. is available.
+	 * @return
+	 */
+	public boolean isAvailable();
 }

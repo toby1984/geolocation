@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,25 +27,39 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.ProgressMonitor;
+import javax.swing.SwingUtilities;
 
 import org.apache.commons.lang.StringUtils;
 
 import de.codesourcery.geoip.locate.CachingGeoLocator;
+import de.codesourcery.geoip.locate.DelegatingGeoLocator;
 import de.codesourcery.geoip.locate.FreeGeoIPLocator;
 import de.codesourcery.geoip.locate.IGeoLocator;
+import de.codesourcery.geoip.locate.IPInfoDbLocator;
 import de.codesourcery.geoip.locate.MaxMindGeoLocator;
 import de.codesourcery.geoip.render.CurvedLineRenderer;
 import de.codesourcery.geoip.render.DefaultMapElementRendererFactory;
 import de.codesourcery.geoip.render.IMapElement;
+import de.codesourcery.geoip.render.LineRenderer.MapLine;
 import de.codesourcery.geoip.render.PointRenderer;
 import de.codesourcery.geoip.render.PointRenderer.MapPoint;
 import de.codesourcery.geoip.render.SimpleMapRenderer;
@@ -61,75 +75,37 @@ public class Main {
 	protected static final GeoLocation<StringSubject> DUBLIN     = new GeoLocation<StringSubject>( new StringSubject("Dublin") , 53.3441040 , -6.2674937 );
 	protected static final GeoLocation<StringSubject> HAMBURG = new GeoLocation<StringSubject>( new StringSubject("HAMBURG") , 53.553272  , 9.992092 );		
 
-	private static IGeoLocator<StringSubject> createGeoLocator() {
-		
-		if ( MaxMindGeoLocator.isAvailable() ) {
-			System.out.println("Using MaxMind locator");
-			return new MaxMindGeoLocator();
-		}
-		System.out.println("Using freegeoIP locator");
-		return new CachingGeoLocator<StringSubject>( new FreeGeoIPLocator() , StringSubject.class ); 
+    private IGeoLocator<StringSubject> locator;
+    private MapCanvas canvas;
+    private volatile ProgressMonitor progressMonitor; 
+    
+    private JCheckBox showAllLabels = new JCheckBox("Show all labels",false);
+    
+    protected interface ThrowingSupplier<T> 
+    {
+        public T get() throws Exception;
+    }
+    
+    protected interface ThrowingConsumer<T> 
+    {
+        public void accept(T obj) throws Exception;
+    }   
+    
+    protected interface ThrowingRunnable
+    {
+        public void run() throws Exception;
+    }         
+    
+	private IGeoLocator<StringSubject> createGeoLocator() 
+	{
+	    final DelegatingGeoLocator<StringSubject> delegate = new DelegatingGeoLocator<>( new MaxMindGeoLocator() , new IPInfoDbLocator() , new FreeGeoIPLocator() );
+		return new CachingGeoLocator<StringSubject>( delegate , StringSubject.class ); 
 	}
 	
-	private static List<StringSubject> getSpammers() {
-		final String[] spammers = {           
-				   "188.51.199.220 ",
-		           "78.93.239.190  ",
-		           "94.183.242.35  ",
-		           "117.199.137.252",
-		           "89.137.17.19   ",
-		           "178.163.110.31 ",
-		           "216.81.74.110  ",
-		           "2.180.185.154  ",
-		           "2.186.145.1    ",
-		           "5.235.200.25   ",
-		           "5.236.246.8    ",
-		           "24.157.16.27   ",
-		           "31.180.238.254 ",
-		           "41.140.90.133  ",
-		           "61.82.125.252  ",
-		           "62.151.202.185 ",
-		           "78.5.33.22     ",
-		           "78.81.248.241  ",
-		           "78.83.199.5    ",
-		           "78.97.60.53    ",
-		           "80.110.56.219  ",
-		           "87.117.229.124 ",
-		           "94.20.114.43   ",
-		           "95.61.65.171   ",
-		           "97.65.70.66    ",
-		           "97.100.99.166  ",
-		           "109.75.128.14  ",
-		           "117.216.117.34 ",
-		           "120.50.93.15   ",
-		           "122.162.136.8  ",
-		           "146.200.150.7  ",
-		           "151.74.153.40  ",
-		           "181.29.78.118  ",
-		           "181.166.91.212 ",
-		           "185.47.49.234  ",
-		           "186.13.6.32    ",
-		           "186.86.77.155  ",
-		           "186.118.37.173 ",
-		           "186.249.200.187",
-		           "187.240.75.133 ",
-		           "188.242.212.166",
-		           "189.193.199.88 ",
-		           "189.200.91.206 ",
-		           "190.103.204.41 ",
-		           "190.109.159.76 ",
-		           "190.124.105.153",
-		           "190.193.76.194 ",
-		           "190.194.48.66  ",
-		           "200.123.55.75  ",
-		           "200.127.61.109 ",
-		           "201.216.221.193",
-		           "206.74.253.82  ",
-		           "212.50.235.138 ",
-		           "212.51.45.194  ",
-		           "212.92.216.240 ",
-		           "212.224.105.138",
-		           "213.153.47.146 "};
+	private List<StringSubject> getSpammers() 
+	{
+		final String[] spammers = { "www.heise.de" };           
+				   
 		
 		final List<StringSubject> list = new ArrayList<>();
 		for ( String s : spammers ) {
@@ -140,204 +116,336 @@ public class Main {
 	
 	public static void main(String[] args) throws Exception 
 	{
-		final IGeoLocator<StringSubject> locator = createGeoLocator();
-
-		final JFrame frame = new JFrame("GeoIP");		
-		frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
-
-		frame.addWindowListener( new WindowAdapter() 
-		{
-			public void windowClosing(java.awt.event.WindowEvent e) 
-			{
-				try {
-					locator.dispose();
-				} catch (Exception e1) {
-					e1.printStackTrace();
-				}
-			};
-		});
-
-		final MapImage image = MapImage.getRobinsonWorldMap(); // MapImage.getMillerWorldMap();		
-		final MapCanvas canvas = new MapCanvas(image);
-		
-		for ( GeoLocation<StringSubject> loc : locator.locate( getSpammers() ) ) 
-		{
-			if ( loc.hasValidCoordinates() ) {
-				canvas.addCoordinate( PointRenderer.createPoint( loc , Color.YELLOW ) );
-			}
-		}
-
-//		canvas.addCoordinate( PointRenderer.createPoint( ZERO , Color.YELLOW ) );
-//		canvas.addCoordinate( PointRenderer.createPoint( WELLINGTON , Color.RED ) );
-//		canvas.addCoordinate( PointRenderer.createPoint( MELBOURNE , Color.RED ) );
-//		canvas.addCoordinate( PointRenderer.createPoint( HAMBURG , Color.RED ) );
-		
-		final double heightToWidth = image.height() / (double) image.width(); // preserve aspect ratio of map
-		canvas.setPreferredSize( new Dimension(640,(int) Math.round( 640 * heightToWidth )) );
-
-		JPanel panel = new JPanel();
-		panel.setLayout( new FlowLayout() );
-
-		panel.add( new JLabel("Scale-X"));
-		final JTextField scaleX = new JTextField( Double.toString( image.getScaleX() ) );
-		scaleX.setColumns( 5 );
-
-		final JTextField scaleY = new JTextField( Double.toString( image.getScaleY() ) );
-		scaleY.setColumns( 5 );
-
-		final ActionListener listener = new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				
-				double x = Double.parseDouble( scaleX.getText() );
-				double y = Double.parseDouble( scaleY.getText() );
-				image.setScale(x,y);
-				canvas.repaint();				
-			}
-		};
-		scaleX.addActionListener( listener );
-		scaleY.addActionListener( listener );
-
-		panel.add( new JLabel("Scale-X"));
-		panel.add( scaleX );
-
-		panel.add( new JLabel("Scale-Y"));
-		panel.add( scaleY );
-
-		final JTextField ipAddress = new JTextField( "www.kickstarter.com" );
-		ipAddress.setColumns( 20 );
-
-		final ActionListener ipListener = new ActionListener() {
-
-			@Override
-			public void actionPerformed(ActionEvent e) 
-			{
-				final String destinationIP = ipAddress.getText(); 
-				if ( StringUtils.isBlank( destinationIP ) ) 
-				{
-					return;
-				}
-
-				/*
-				 * Perform traceroute.
-				 */
-				final List<String> hops;
-				try {
-					if ( TracePath.isPathTracingAvailable() ) 
-					{
-						hops = TracePath.trace( destinationIP );
-					} 
-					else 
-					{
-						System.err.println("tracepath not available.");
-						if ( TracePath.isValidAddress( destinationIP ) ) {
-							hops = new ArrayList<>();
-							hops.add( destinationIP );
-						} else {
-							System.err.println( destinationIP+" is no valid IP");
-							return;
-						}
-					}
-				} 
-				catch(Exception ex) {
-					System.err.println("Failed to trace "+destinationIP);
-					ex.printStackTrace();
-					return;
-				}
-
-				System.out.println("Trace contains "+hops.size()+" IPs");
-
-				/*
-				 * Gather locations.
-				 */
-				final List<StringSubject> subjects = new ArrayList<>();
-				for ( String ip : hops ) {
-					subjects.add( new StringSubject(ip) );
-				}
-
-				final List<GeoLocation<StringSubject>> locations;
-				try 
-				{
-					long time = -System.currentTimeMillis();
-					locations = locator.locate( subjects );
-					time += System.currentTimeMillis();
-
-					System.out.println("Locating hops for "+destinationIP+" returned "+locations.size()+" valid locations ( time: "+time+" ms)");
-					System.out.flush();					
-
-				} 
-				catch (Exception e2) 
-				{
-					e2.printStackTrace();
-					return;
-				}
-
-				/*
-				 * Weed-out invalid/unknown locations.
-				 */
-				{
-					GeoLocation<StringSubject> previous = null;
-					for (Iterator<GeoLocation<StringSubject>> it = locations.iterator(); it.hasNext();) 
-					{
-						final GeoLocation<StringSubject> location = it.next();
-						if ( ! location.hasValidCoordinates() || ( previous != null && previous.coordinate().equals( location.coordinate() ) ) ) 
-						{
-							it.remove();
-							System.err.println("Ignoring invalid/duplicate location for "+location);
-						} else {
-							previous = location;
-						}
-					}
-				}
-				
-				/*
-				 * Populate chart.
-				 */
-
-				System.out.println("Adding "+locations.size()+" hops to chart");
-				System.out.flush();					
-
-				canvas.removeAllCoordinates();
-
-				if ( locations.size() == 1 ) 
-				{
-					canvas.addCoordinate( PointRenderer.createPoint( locations.get(0) , getLabel( locations.get(0) ) , Color.BLACK ) );
-				} 
-				else if ( locations.size() > 1 ) 
-				{
-					GeoLocation<StringSubject> previous = locations.get(0);
-					MapPoint previousPoint = PointRenderer.createPoint( previous , getLabel( previous ) , Color.BLACK );
-					final int len = locations.size();
-					for ( int i = 1 ; i < len ; i++ ) 
-					{
-						final GeoLocation<StringSubject> current = locations.get(i);
-//						final MapPoint currentPoint = PointRenderer.createPoint( current , getLabel( current ) , Color.BLACK );
-						final MapPoint currentPoint = PointRenderer.createPoint( current , Color.BLACK );						
-						
-//						canvas.addCoordinate( LineRenderer.createLine( previousPoint , currentPoint , Color.RED ) );
-						canvas.addCoordinate( CurvedLineRenderer.createLine( previousPoint , currentPoint , Color.RED ) );
-						
-						previous = locations.get(i);
-						previousPoint = currentPoint;
-					}
-				}
-				System.out.println("Finished adding");
-				System.out.flush();
-				canvas.repaint();			
-			}
-		};	
-		ipAddress.addActionListener( ipListener );
-
-		panel.add( new JLabel("IP"));		
-		panel.add( ipAddress );
-
-		frame.getContentPane().setLayout( new BorderLayout() );
-		frame.getContentPane().add( panel , BorderLayout.NORTH);
-		frame.getContentPane().add( canvas , BorderLayout.CENTER );
-		frame.pack();
-		frame.setVisible(true);
+	    new Main().run();
 	}
+	
+	private void runOnEDT(Runnable r)
+	{
+	    if ( SwingUtilities.isEventDispatchThread() ) 
+	    {
+	        r.run();
+	    } else {
+	        try {
+                SwingUtilities.invokeAndWait( r );
+            } catch (InvocationTargetException | InterruptedException e) {
+                error( e,  e.getMessage() );
+            } 
+	    }
+	}
+	
+	private void error(Throwable t , String message) 
+	{
+	    runOnEDT( () -> 
+	    {
+	        if ( t != null ) {
+	            t.printStackTrace();
+	        }
+	        JOptionPane.showMessageDialog(null, message);
+	    });
+	}
+	
+	protected boolean onProgress(int currentItem,int totalItemCount) 
+	{
+	    final AtomicBoolean cancelled = new AtomicBoolean();
+	    runOnEDT( () -> 
+	    {
+	        if ( progressMonitor == null ) 
+	        {
+	            progressMonitor = new ProgressMonitor( canvas ,"Looking up "+totalItemCount+" geo locations...\n", "" , 0 , totalItemCount );
+	        }	        
+	        if ( currentItem == 0 ) {
+	            progressMonitor.setMaximum( totalItemCount );
+	        }
+	        final int progress = (int) (totalItemCount == 0 ? 100.0f : 100.0f*(currentItem/(float) totalItemCount));
+	        String message = String.format("Completed %d%% (%d of %d).\n", progress, currentItem , totalItemCount );
+	        System.out.println( message );
+	        progressMonitor.setNote(message);	        
+	        progressMonitor.setProgress( currentItem );
+
+	        if ( currentItem == totalItemCount ) {
+	            progressMonitor = null;
+	        } 
+	        else if ( progressMonitor.isCanceled() ) 
+	        {
+	            cancelled.set(true);
+	            progressMonitor.close();
+	            progressMonitor = null;
+	        }
+	    });
+	    return ! cancelled.get();
+	}
+	
+	public void run() throws Exception {
+
+        locator = createGeoLocator();
+
+        final JFrame frame = new JFrame("GeoIP");       
+        frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
+
+        frame.addWindowListener( new WindowAdapter() 
+        {
+            public void windowClosing(java.awt.event.WindowEvent e) 
+            {
+                try {
+                    locator.dispose();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            };
+        });
+
+        final MapImage image = MapImage.getRobinsonWorldMap();
+        canvas = new MapCanvas(image);
+        
+        for ( GeoLocation<StringSubject> loc : locator.locate( getSpammers(), this::onProgress ) ) 
+        {
+            if ( loc.hasValidCoordinates() ) {
+                canvas.addCoordinate( PointRenderer.createPoint( loc , Color.YELLOW ) );
+            }
+        }
+
+        final double heightToWidth = image.height() / (double) image.width(); // preserve aspect ratio of map
+        canvas.setPreferredSize( new Dimension(640,(int) Math.round( 640 * heightToWidth )) );
+
+        JPanel panel = new JPanel();
+        panel.setLayout( new FlowLayout() );
+
+        panel.add( new JLabel("Scale-X"));
+        final JTextField scaleX = new JTextField( Double.toString( image.getScaleX() ) );
+        scaleX.setColumns( 5 );
+
+        final JTextField scaleY = new JTextField( Double.toString( image.getScaleY() ) );
+        scaleY.setColumns( 5 );
+
+        final ActionListener listener = new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                
+                double x = Double.parseDouble( scaleX.getText() );
+                double y = Double.parseDouble( scaleY.getText() );
+                image.setScale(x,y);
+                canvas.repaint();               
+            }
+        };
+        scaleX.addActionListener( listener );
+        scaleY.addActionListener( listener );
+
+        panel.add( new JLabel("Scale-X"));
+        panel.add( scaleX );
+
+        panel.add( new JLabel("Scale-Y"));
+        panel.add( scaleY );
+
+        final JTextField ipAddress = new JTextField( "www.kickstarter.com" );
+        ipAddress.setColumns( 20 );
+
+        final ActionListener ipListener = new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) 
+            {
+                final String destinationIP = ipAddress.getText(); 
+                if ( StringUtils.isBlank( destinationIP ) ) 
+                {
+                    return;
+                }
+                performTrace( destinationIP , loc -> populateChart(loc) , throwable ->  error( throwable , "Something went wrong: "+throwable.getMessage() ) );
+            }
+        };  
+        
+        ipAddress.addActionListener( ipListener );
+
+        panel.add( showAllLabels );
+        
+        showAllLabels.addActionListener( e -> showLabelsToggled() );
+        
+        panel.add( new JLabel("IP"));       
+        panel.add( ipAddress );
+
+        frame.getContentPane().setLayout( new BorderLayout() );
+        frame.getContentPane().add( panel , BorderLayout.NORTH);
+        frame.getContentPane().add( canvas , BorderLayout.CENTER );
+        frame.pack();
+        frame.setVisible(true);
+	}
+	
+	private void populateChart(List<GeoLocation<StringSubject>> locations) 
+	{
+        System.out.println("Adding "+locations.size()+" hops to chart");
+        System.out.flush();                 
+
+        canvas.removeAllCoordinates();
+
+        if ( locations.size() == 1 ) 
+        {
+            final MapPoint point = PointRenderer.createPoint( locations.get(0) , getLabel( locations.get(0) ) , Color.BLACK );
+            markAsEndpoint( point );
+            canvas.addCoordinate( point );
+        } 
+        else if ( locations.size() > 1 ) 
+        {
+            GeoLocation<StringSubject> previous = locations.get(0);
+            MapPoint previousPoint = PointRenderer.createPoint( previous , getLabel( previous ) , Color.BLACK );
+            markAsEndpoint( previousPoint );
+            final int len = locations.size();
+            for ( int i = 1 ; i < len ; i++ ) 
+            {
+                final GeoLocation<StringSubject> current = locations.get(i);
+                final MapPoint currentPoint = PointRenderer.createPoint( current , getLabel(current) , Color.BLACK ); 
+                
+                final boolean isLast = i == len-1;
+                if ( isLast ) {
+                    markAsEndpoint( currentPoint );
+                }
+                canvas.addCoordinate( CurvedLineRenderer.createLine( previousPoint , currentPoint , Color.RED ) );
+                
+                previous = locations.get(i);
+                previousPoint = currentPoint;
+            }
+        }
+        System.out.println("Finished adding");
+        System.out.flush();
+        
+        showLabelsToggled();
+	}
+	
+    private boolean isPoint(IMapElement e) {
+        return e.hasType( IMapElement.Type.POINT );
+    }	
+    
+    private void markAsEndpoint(MapPoint point) 
+    {
+        point.getAttributes().put( "endpoint", Boolean.TRUE );
+        point.getAttributes().put( IMapElement.ATTRIBUTE_RENDER_LABEL , Boolean.TRUE );
+    }
+
+	private boolean isEndpoint(IMapElement e) 
+	{
+	    return isPoint(e) && e.getAttributes().containsKey( "endpoint" ); 
+	}
+	
+	private Collection<IMapElement> getUniquePoints(Collection<IMapElement> elements) {
+	    
+	    final Map<GeoLocation<?>,IMapElement> points = new HashMap<>();
+	    for ( IMapElement e : elements ) 
+	    {
+	        if ( e instanceof MapPoint ) {
+	            points.put( ((MapPoint) e).location , e );
+	        } 
+	        else if ( e instanceof MapLine ) 
+	        {
+	            final MapPoint start = ((MapLine) e).start;
+	            final MapPoint end = ((MapLine) e).end;
+	            points.put( start.location , start );
+	            points.put( end.location , end );
+	        } else {
+	            throw new RuntimeException("Don't know how to unwrap "+e);
+	        }
+	    }
+	    return points.values();
+	}
+	
+	private void showLabelsToggled() 
+	{
+	    final boolean showLabels = showAllLabels.isSelected();
+	    
+	    getUniquePoints( canvas.mapRenderer.getMapElements() ).stream()
+	    .filter( e -> ! isEndpoint(e) ) // endpoint labels are always drawn
+	    .forEach( point -> 
+	    {
+	        if ( showLabels ) {
+	            point.getAttributes().put( IMapElement.ATTRIBUTE_RENDER_LABEL , Boolean.TRUE );
+	        } else {
+	            point.getAttributes().remove( IMapElement.ATTRIBUTE_RENDER_LABEL );
+	        }
+	    });
+	    canvas.repaint();
+	}
+    protected void performTrace(String destinationIP,Consumer<List<GeoLocation<StringSubject>>> onSuccess,Consumer<Throwable> onFailure) 
+    {
+        final ThrowingSupplier<List<String>> hopsSupplier = () -> 
+        {
+            List<String> hops = null;
+            if ( TracePath.isPathTracingAvailable() ) 
+            {
+                hops = TracePath.trace( destinationIP, line -> System.out.println("TRACE: "+line ) );
+                hops = hops.stream().filter( ip -> ! TracePath.isUnroutableAddress( ip ) ).collect( Collectors.toList() );
+            } 
+            else 
+            {
+                System.err.println("path tracing not available.");
+                if ( ! TracePath.isValidAddress( destinationIP ) ) {
+                    throw new RuntimeException( destinationIP+" is no valid IP");
+                }
+                hops = Arrays.asList( destinationIP );
+            }
+            System.out.println("Trace contains "+hops.size()+" IPs");
+            return hops;
+        };
+        
+        final ThrowingConsumer<List<String>> hopsConsumer = hops -> 
+        {
+            final List<StringSubject> subjects = hops.stream().map( StringSubject::new ).collect(Collectors.toList());
+            long time = -System.currentTimeMillis();
+            final List<GeoLocation<StringSubject>> locations = locator.locate( subjects, Main.this::onProgress );
+            time += System.currentTimeMillis();
+
+            System.out.println("Locating hops for "+destinationIP+" returned "+locations.size()+" valid locations ( time: "+time+" ms)");
+            System.out.flush();    
+            
+            /*
+             * Weed-out invalid/unknown locations.
+             */
+            GeoLocation<StringSubject> previous = null;
+            for (Iterator<GeoLocation<StringSubject>> it = locations.iterator(); it.hasNext();) 
+            {
+                final GeoLocation<StringSubject> location = it.next();
+                if ( ! location.hasValidCoordinates() ) 
+                {
+                    it.remove();
+                    System.err.println("Ignoring invalid location for "+location);
+                } 
+                else if ( previous != null && previous.coordinate().equals( location.coordinate() ) ) 
+                {
+                    it.remove();
+                    System.err.println("Ignoring duplicate location for "+location+" <-> "+previous);
+                } else {
+                    previous = location;
+                }
+            }
+            runOnEDT( () -> onSuccess.accept( locations ) );
+        };
+        
+        doWith( hopsSupplier , hopsConsumer , onFailure );
+    }
+    
+    protected <A> void doWith(ThrowingSupplier<A> supp, ThrowingConsumer<A> consumer, Consumer<Throwable> onFailure) {
+        
+        async( () -> 
+        {
+            consumer.accept( supp.get() );
+        } , onFailure );
+    }
+    
+    private void async(ThrowingRunnable block,Consumer<Throwable> onFailure) 
+    {
+        final Thread t = new Thread() 
+        {
+            @Override
+            public void run() 
+            {
+                try 
+                {
+                    block.run();
+                } catch(Exception e) {
+                    onFailure.accept(e);
+                }
+            }
+        };
+        t.setDaemon( true );
+        t.start();        
+    }
 
 	protected static String getLabel(GeoLocation<?> location) 
 	{
@@ -409,7 +517,11 @@ public class Main {
 					final int newWidth = p1.x - p0.x;
 					final int newHeight = (int) Math.round( newWidth*heightToWidth ); // preserve aspect ratio
 
-					currentRegion = new ImageRegion( p0.x , p0.y , newWidth , newHeight );
+					final ImageRegion newRegion = new ImageRegion( p0.x , p0.y , newWidth , newHeight );
+					
+					if ( newRegion.width > 10 && newRegion.height > 10 ) { 
+					    currentRegion = newRegion;
+					}
 					
 					// update display
 					selectionStart = null;

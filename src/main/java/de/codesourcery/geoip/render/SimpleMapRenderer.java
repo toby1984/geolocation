@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.jhlabs.map.proj.Projection;
 
@@ -241,4 +242,9 @@ public class SimpleMapRenderer implements IMapRenderer {
 	public MapImage getMapImage() {
 		return image;
 	}
+
+    @Override
+    public Collection<IMapElement> getMapElements() {
+        return coordinates.values().stream().flatMap( l -> l.stream() ).collect( Collectors.toList() );
+    }
 }

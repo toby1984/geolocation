@@ -1,5 +1,5 @@
 /**
- * Copyright 2012 Tobias Gierke <tobias.gierke@code-sourcery.de>
+ * Copyright 2015 Tobias Gierke <tobias.gierke@code-sourcery.de>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,10 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
 import java.lang.reflect.Constructor;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -51,7 +48,7 @@ import de.codesourcery.geoip.ISubject;
  *
  * @param <SUBJECT>
  */
-public class CachingGeoLocator<SUBJECT extends ISubject<?>> implements IGeoLocator<SUBJECT> {
+public class CachingGeoLocator<SUBJECT extends ISubject<?>> extends AbstractGeoLocator<SUBJECT> {
 
 	private final IGeoLocator<SUBJECT> delegate;
 	
@@ -134,26 +131,18 @@ public class CachingGeoLocator<SUBJECT extends ISubject<?>> implements IGeoLocat
 	}
 	
 	@Override
-	public List<GeoLocation<SUBJECT>> locate(Collection<SUBJECT> addresses) throws Exception 
-	{
-		final List<GeoLocation<SUBJECT>> result = new ArrayList<>();
-		for ( SUBJECT s : addresses ) {
-			result.add( locate( s ) );
-		}
-		return result;
-	}	
-
-	@Override
 	public GeoLocation<SUBJECT> locate(SUBJECT address) throws Exception {
 		
 		GeoLocation<SUBJECT> result = cacheLookup( address );
 		if ( result == null ) {
+		    System.out.println("CACHE-MISS: >"+address+"<");
 			result = delegate.locate( address );
 			synchronized( CACHE_FILE ) 
 			{
 				GeoLocation<SUBJECT> existing = cache.get( address );
 				if ( existing == null ) {
 					cache.put( address , result.createShallowCopy() );
+					System.out.println("CACHE-UPDATE: "+existing+" ( cache size: "+cache.size()+")" );
 				} else {
 					result = existing;
 				}
@@ -215,5 +204,11 @@ public class CachingGeoLocator<SUBJECT extends ISubject<?>> implements IGeoLocat
 		} finally {
 			delegate.flushCaches();
 		}
+	}
+	
+	@Override
+	public boolean isAvailable() 
+	{
+	    return delegate.isAvailable();
 	}
 }
