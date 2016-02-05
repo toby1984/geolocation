@@ -30,4 +30,4 @@ Run
 
 to install the file in your local repository.
 
-Afterwards, just run "mvn package" (which creates a self-executable JAR) or "mvn compile exec:java" to run it.
+Afterwards, just run "mvn package" (which creates a self-executable JAR "target/geolocation.jar") or "mvn compile exec:java" to run it.
