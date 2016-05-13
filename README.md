@@ -1,5 +1,7 @@
 (C) 2014 tobias.gierke@code-sourcery.de
 
+![screenshot](https://github.com/toby1984/geolocation/blob/master/screenshot.png)
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
