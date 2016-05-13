@@ -1,5 +1,7 @@
 (C) 2014 tobias.gierke@code-sourcery.de
 
+This is a toy project that uses tracepath/traceroute (whatever is available) to trace the hops to a given IP/hostname and draws them on a world map.
+
 ![screenshot](https://github.com/toby1984/geolocation/blob/master/screenshot.png)
 
 Licensed under the Apache License, Version 2.0 (the "License");
